@@ -26,7 +26,7 @@ public class AppUserServiceImpl implements AppUserService {
     public Homo<GetUserInfoResp> getUserInfo(GetUserInfoReq req) {
         log.info("getUserInfo req userId_{} req_{}", req.getUserId(), req);
         return entityStorage
-                .get(LogicType.USER.ordinal(), req.getUserId(), "data", User.class)
+                .get(LogicType.USER.name(), req.getUserId(), "data", User.class)
                 .nextDo(retUser -> {
                     GetUserInfoResp res;
                     if (retUser != null) {
@@ -69,7 +69,7 @@ public class AppUserServiceImpl implements AppUserService {
                     return Homo.result(1);
                 })
                 .nextDo(ret ->
-                        entityStorage.get(LogicType.USER.ordinal(), userId, "data", User.class)
+                        entityStorage.get(LogicType.USER.name(), userId, "data", User.class)
                                 .nextDo(newUser -> {
                                     if (newUser == null) {
                                         boolean isPass = User.checkCreateInfo(req.getUserInfo());
@@ -77,7 +77,7 @@ public class AppUserServiceImpl implements AppUserService {
                                             return Homo.error(new Exception("参数错误"));
                                         }
                                         newUser = User.createUser(req.getUserInfo());
-                                        return entityStorage.save(LogicType.USER.ordinal(), userId, "data", newUser, User.class);
+                                        return entityStorage.save(LogicType.USER.name(), userId, "data", newUser, User.class);
                                     }
                                     return Homo.error(new Exception("用户已存在"));
                                 })
