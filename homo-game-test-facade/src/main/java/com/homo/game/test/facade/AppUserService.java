@@ -9,7 +9,7 @@ import io.homo.game.client.msg.proto.GetUserInfoResp;
 import org.junit.jupiter.params.shadow.com.univocity.parsers.common.input.CharInputReader;
 
 /**
- * syclub-app grpc服务
+ * app grpc服务
  * @author dubian
  */
 public interface AppUserService  {

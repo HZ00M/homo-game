@@ -31,6 +31,9 @@
             <groupId>com.homo</groupId>
             <artifactId>homo-service-lock-redis</artifactId>
         </dependency>
-
+        <dependency>
+            <groupId>com.homo</groupId>
+            <artifactId>homo-service-cache-storage-redis</artifactId>
+        </dependency>
     </dependencies>
 </project>
