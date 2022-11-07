@@ -14,22 +14,24 @@
     <version>${revision}</version>
 
     <properties>
+        <homo.core.version>1.0</homo.core.version>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <revision>1.0</revision>
     </properties>
 
     <modules>
-        <module>homo-game-test</module>
+        <module>homo-game-mongo-driver-test</module>
         <module>homo-game-test-facade</module>
         <module>homo-game-client-proto</module>
+        <module>homo-game-persistent-server</module>
     </modules>
 
     <dependencies>
         <dependency>
             <groupId>com.homo</groupId>
             <artifactId>homo-core</artifactId>
-            <version>1.0</version>
+            <version>${homo.core.version}</version>
         </dependency>
     </dependencies>
 
