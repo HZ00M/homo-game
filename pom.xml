@@ -21,10 +21,9 @@
     </properties>
 
     <modules>
-        <module>homo-game-mongo-driver-test</module>
-        <module>homo-game-test-facade</module>
-        <module>homo-game-client-proto</module>
         <module>homo-game-persistent-server</module>
+        <module>homo-game-activity-core</module>
+        <module>homo-game-activity-facade</module>
     </modules>
 
     <dependencies>
@@ -39,12 +38,17 @@
         <dependencies>
             <dependency>
                 <groupId>com.homo</groupId>
-                <artifactId>homo-game-test</artifactId>
+                <artifactId>homo-game-persistent-server</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>com.homo</groupId>
-                <artifactId>homo-game-test-facade</artifactId>
+                <artifactId>homo-game-activity-core</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.homo</groupId>
+                <artifactId>homo-game-activity-facade</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>
