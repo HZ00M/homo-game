@@ -3,8 +3,6 @@ package com.homo.game.persitent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanPostProcessor;
-import org.springframework.beans.factory.config.InstantiationAwareBeanPostProcessor;
-import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 
 @Slf4j

@@ -1,6 +1,7 @@
 package com.homo.game.activity.core.data;
 
 import com.alibaba.fastjson.annotation.JSONField;
+import com.homo.core.utils.lang.KVData;
 import com.homo.game.activity.core.Node;
 import com.homo.game.activity.core.Owner;
 import com.homo.game.activity.facade.Point;

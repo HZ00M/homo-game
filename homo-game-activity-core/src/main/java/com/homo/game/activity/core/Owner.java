@@ -1,11 +1,13 @@
 package com.homo.game.activity.core;
 
 import com.alibaba.fastjson.annotation.JSONField;
+import com.homo.core.utils.lang.KKMap;
+import com.homo.core.utils.lang.KVData;
 import com.homo.core.utils.rector.Homo;
-import com.homo.game.activity.core.data.KKMap;
-import com.homo.game.activity.core.data.KVData;
 import com.homo.game.activity.core.data.NodeData;
-import com.homo.game.activity.facade.event.EvenType;
+import com.homo.game.activity.core.point.DynamicBindPoint;
+import com.homo.game.activity.facade.event.Event;
+import com.homo.game.activity.facade.event.EventType;
 import lombok.extern.log4j.Log4j2;
 
 import java.util.Map;
@@ -40,7 +42,7 @@ public class Owner {
      * owner消息绑定点列表（msgId-msgType-point）
      * node打开（open）时会将自身的绑定点添加到该owner上
      */
-    protected KKMap<String, EvenType, DynamicBindPoint> eventPoints = new KKMap<>();
+    protected KKMap<String, EventType, DynamicBindPoint> eventPoints = new KKMap<>();
     /**
      * 节点数据列表（address-nodeData）
      * SerializerFeature.WriteClassName 表示会保存子类的类型信息
@@ -73,16 +75,16 @@ public class Owner {
      * 绑定需要处理某个事件的节点对象
      * 当节点被打开时会调用此函数
      */
-    public void bindEventNode(String eventId, EvenType eventType, NodeData nodeData, Integer order){
+    public void bindEventNode(String eventId, EventType eventType, NodeData nodeData, Integer order) {
         DynamicBindPoint dynamicBindPoint = eventPoints.get(eventId, eventType);
-        if (dynamicBindPoint ==null){
+        if (dynamicBindPoint == null) {
             DynamicBindPoint bindPoint = new DynamicBindPoint();
-            if (order!=null){
-                bindPoint.bind(nodeData,order);
-            }else{
+            if (order != null) {
+                bindPoint.bind(nodeData, order);
+            } else {
                 bindPoint.bindToTail(nodeData);
             }
-            eventPoints.set(eventId, eventType,bindPoint);
+            eventPoints.set(eventId, eventType, bindPoint);
         }
     }
 
@@ -90,9 +92,34 @@ public class Owner {
      * 取消某个节点对象与事件的绑定
      * 取消绑定后，当收到匹配的事件后不再通知取消的node对象处理
      */
-    public void unbindEventNode(String eventId,EvenType evenType,NodeData nodeData){
-        DynamicBindPoint dynamicBindPoint = eventPoints.get(eventId, evenType);
+    public void unbindEventNode(String eventId, EventType eventType, NodeData nodeData) {
+        DynamicBindPoint dynamicBindPoint = eventPoints.get(eventId, eventType);
         dynamicBindPoint.unbind(nodeData);
+    }
+
+    /**
+     * 事件处理入口，将事件分发到关注该事件的所有节点中
+     * 如果没有一个节点关注该事件就将该关注点删除
+     */
+    public void onEvent(Event event) throws Exception {
+        DynamicBindPoint bindPoint = eventPoints.get(event.getId(), event.getType());
+        if (bindPoint != null) {
+            if (bindPoint.isEmpty()) {
+                eventPoints.remove(event.getId(), event.getType());//todo 这里需要验证bindPoint是否会被回收
+            } else {
+                bindPoint.broadcast(this, event);
+            }
+        }
+    }
+
+    /**
+     * 重置数据
+     */
+    public void resetData(){
+        eventPoints = new KKMap<>();
+        ownerData = new KVData();
+        nodeDataMap = new ConcurrentHashMap<>();
+        //todo 打开根节点
     }
 
     /**
@@ -124,25 +151,25 @@ public class Owner {
 
     public <T> T setValue(String key, T value) {
         if (value != null) {
-            return ownerData.set(key,value);
+            return ownerData.set(key, value);
         }
         return null;
     }
 
-    public Integer getInt(String key,int defaultValue){
-        return getValue(key,defaultValue);
+    public Integer getInt(String key, int defaultValue) {
+        return getValue(key, defaultValue);
     }
 
-    public String getString(String key,String defaultValue){
-        return getValue(key,defaultValue);
+    public String getString(String key, String defaultValue) {
+        return getValue(key, defaultValue);
     }
 
-    public Long getLong(String key,long defaultValue){
-        return getValue(key,defaultValue);
+    public Long getLong(String key, long defaultValue) {
+        return getValue(key, defaultValue);
     }
 
-    private  <T> T getValue(String key,T defaultValue){
-        return (T) ownerData.data.getOrDefault(key,defaultValue);
+    private <T> T getValue(String key, T defaultValue) {
+        return (T) ownerData.data.getOrDefault(key, defaultValue);
     }
 
     public String getId() {

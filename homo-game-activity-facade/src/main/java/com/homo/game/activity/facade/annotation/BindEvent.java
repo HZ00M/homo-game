@@ -1,6 +1,6 @@
 package com.homo.game.activity.facade.annotation;
 
-import com.homo.game.activity.facade.event.EvenType;
+import com.homo.game.activity.facade.event.EventType;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -17,7 +17,7 @@ public @interface BindEvent {
     /**
      * 处理事件类型 默认都处理
      */
-    EvenType type() default EvenType.any;
+    EventType type() default EventType.any;
 
     /**
      *  事件类型

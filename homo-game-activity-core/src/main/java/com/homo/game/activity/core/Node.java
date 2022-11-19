@@ -2,22 +2,33 @@ package com.homo.game.activity.core;
 
 import com.homo.core.utils.delegate.Delegate2PR;
 import com.homo.core.utils.delegate.Delegate2PVoid;
+import com.homo.core.utils.exception.HomoError;
+import com.homo.core.utils.lang.KKMap;
 import com.homo.core.utils.rector.Homo;
+import com.homo.game.activity.core.compoment.Component;
+import com.homo.game.activity.core.config.CombineConfig;
+import com.homo.game.activity.core.config.NodeConfig;
 import com.homo.game.activity.core.data.NodeData;
+import com.homo.game.activity.core.exception.HomoActivityError;
+import com.homo.game.activity.core.factory.NodeFactory;
+import com.homo.game.activity.core.node.FatherNode;
+import com.homo.game.activity.core.node.InSideCarNode;
+import com.homo.game.activity.core.node.OutSideCarNode;
+import com.homo.game.activity.core.point.SubPoint;
 import com.homo.game.activity.facade.Point;
 import com.homo.game.activity.facade.annotation.BindEvent;
-import com.homo.game.activity.core.compoment.Component;
+import com.homo.game.activity.facade.annotation.Config;
 import com.homo.game.activity.facade.event.*;
-import com.homo.game.activity.facade.factory.PointFactory;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.CollectionUtils;
 import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 节点（Node及其子类），活动系统的核心
@@ -38,11 +49,12 @@ import java.util.Map;
 @Data
 public abstract class Node implements Point {
 
+    public static String PARENT_ID = "Father";
     /**
      * 节点工厂
      * 负责节点的创建和管理，所有节点实例都保存在工厂中，通过address获取
      */
-    public static PointFactory pointFactory;
+    public static NodeFactory nodeFactory;
     /**
      * 节点类型名缓存
      */
@@ -108,8 +120,17 @@ public abstract class Node implements Point {
      * 父节点
      */
     public Node parent;
+    /**
+     * 如果该节点是当前组合节点的父节点，则它将有用边车节点
+     */
+    protected InSideCarNode inSideCarNode;
+    /**
+     * 如果该节点是当前组合节点的父节点，则它将有用边车节点
+     */
+    protected OutSideCarNode outSideCarNode;
 
     /**
+     * indexId-Node
      * 子节点列表
      */
     public Map<String, Node> childMap;
@@ -126,6 +147,17 @@ public abstract class Node implements Point {
     public Map<String, Component> componentMap;
 
     /**
+     * 组合节点的配置信息
+     * 包括公用参数，对外端点，子节点配置，子节点连接信息
+     */
+    protected CombineConfig combineConfig;
+
+    /**
+     * 该节点的配置信息
+     */
+    public NodeConfig nodeConfig;
+
+    /**
      * 本节点响应外部请求端点列表
      */
     public Map<String, Delegate2PR<NodeData, Event, Homo<ReportEvent>>> replayPoints = new HashMap<>();
@@ -136,9 +168,10 @@ public abstract class Node implements Point {
     public Map<String, Delegate2PR<NodeData, RequestEvent, Homo<ResponseEvent>>> askPoints = new HashMap<>();
 
     /**
+     * msgId->subPoint
      * 本节点订阅事件端点列表（可以是外部上报事件ReportEvent，也可以是内部传播事件InnerEvent）
      */
-    public Map<String, Delegate2PVoid<NodeData, Event>> subPoints = new HashMap<>();
+    public KKMap<String, EventType, SubPoint> subPoints = new KKMap();
 
     /**
      * 本节点向外发布的事件端点列表
@@ -188,9 +221,10 @@ public abstract class Node implements Point {
                     msgId = bindEvent.msgId();
                 }
                 method.setAccessible(true);
-                registerSubFun(msgId, bindEvent.order(), (nodeData, event) -> {
-                    if (!bindEvent.type().equals(EvenType.any)) {
+                registerSubFun(msgId, bindEvent.type(), bindEvent.order(), (nodeData, event) -> {
+                    if (!bindEvent.type().equals(EventType.any)) {//如果是any类型则直接调用，否则需要判断类型
                         if (!event.getType().equals(bindEvent.type())) {
+                            log.warn("event type {} not match method bind type {}",event.getType(),bindEvent.type());
                             return;
                         }
                     }
@@ -214,27 +248,28 @@ public abstract class Node implements Point {
 
     /**
      * 注册订阅事件
-     *
-     * @param msgId
-     * @param order
-     * @param subFun
      */
-    public void registerSubFun(String msgId, int order, Delegate2PVoid.ExecuteFun<NodeData, Event> subFun) {
-        subPoints.computeIfAbsent(msgId, k -> new Delegate2PVoid<>()).bind(subFun, order);
+    public void registerSubFun(String msgId, EventType eventType, int order, Delegate2PVoid.ExecuteFun<NodeData, Event> subFun) {
+        SubPoint subPoint = subPoints.get(msgId, eventType);
+        if (subPoint == null) {
+            subPoint = new SubPoint(msgId, eventType);
+            subPoints.set(msgId, eventType, subPoint);
+        }
+        subPoint.bind(subFun, order);
     }
 
-    public Delegate2PVoid<NodeData, Event> getSubPoint(String msgId) {
-        return subPoints.get(msgId);
+    public Delegate2PVoid<NodeData, Event> getSubPoint(String msgId, EventType eventType) {
+        return subPoints.get(msgId, eventType);
     }
 
     /**
      * 分发事件
      */
     public void dispatchEvent(NodeData nodeData, Event event) {
-        Delegate2PVoid<NodeData, Event> subPoint = getSubPoint(event.getId());
+        Delegate2PVoid<NodeData, Event> subPoint = getSubPoint(event.getId(), event.getType());
         if (subPoint != null) {//该节点有订阅该事件的端点，分发事件
             subPoint.publish(nodeData, event);
-            processPublish(nodeData,event);
+            processPublish(nodeData, event);
         } else {
             log.info("dispatchEvent node {} not subPoint msgId {}", Node.getTypeName(this.getClass()), event.getId());
         }
@@ -243,9 +278,21 @@ public abstract class Node implements Point {
     /**
      * 该节点待发布的事件列表
      */
-    public ThreadLocal<List<Tuple2<String,Event>>> threadLocalPrePubList = new InheritableThreadLocal<>();
+    public ThreadLocal<List<Tuple2<String, Event>>> threadLocalPrePubList = new InheritableThreadLocal<>();
 
-    public List<Tuple2<String,Event>> popPubList(){
+    public  <T extends Event> void publish(String pointName, T event) {
+        List<Tuple2<String, Event>> prePubList = getPrePubList();
+        prePubList.add(Tuples.of(pointName,event));
+    }
+
+    public List<Tuple2<String, Event>> getPrePubList() {
+        if (threadLocalPrePubList.get() == null) {
+            threadLocalPrePubList.set(new LinkedList<>());
+        }
+        return threadLocalPrePubList.get();
+    }
+
+    public List<Tuple2<String, Event>> popPubList() {
         List<Tuple2<String, Event>> list = threadLocalPrePubList.get();
         if (list != null) {
             threadLocalPrePubList.set(null);
@@ -256,17 +303,228 @@ public abstract class Node implements Point {
     /**
      * 处理该节点pub事件
      */
-    public void processPublish(NodeData nodeData,Event event){
+    public void processPublish(NodeData nodeData, Event event) {
         List<Tuple2<String, Event>> pubList = popPubList();
-        if (!CollectionUtils.isEmpty(pubList)){
-            pubList.forEach(item->{
-                pubPoints.computeIfPresent(item.getT1(),(msgId,pubPoint)->{
-                    pubPoint.publish(nodeData,item.getT2());
+        if (!CollectionUtils.isEmpty(pubList)) {
+            pubList.forEach(item -> {
+                pubPoints.computeIfPresent(item.getT1(), (msgId, pubPoint) -> {
+                    pubPoint.publish(nodeData, item.getT2());
                     return pubPoint;
                 });
             });
         }
     }
 
+    /**
+     * 将该节点关注的事件绑定到owner的事件关注点
+     */
+    public void bindSubEvent(NodeData nodeData) {
+        Set<SubPoint> pointsAll = subPoints.getAll();
+        pointsAll.forEach(point -> {
+            nodeData.getOwner().bindEventNode(point.msgId, point.eventType, nodeData, null);//默认添加到对尾
+        });
+    }
 
+    /**
+     * 将该节点关注的事件从owner上解除绑定
+     */
+    public void unbindSubEvent(NodeData nodeData) {
+        Set<SubPoint> pointsAll = subPoints.getAll();
+        pointsAll.forEach(point -> {
+            nodeData.getOwner().unbindEventNode(point.msgId, point.eventType, nodeData);
+        });
+    }
+
+    /**
+     * 根据子节点id获取子节点对象
+     * <p>
+     * id = "Father"返回自身
+     * id = "In"返回输入代理节点
+     * id = "Out"返回输出代理节点
+     * </P>
+     */
+    public Node getChildById(String id) {
+        if (FatherNode.ID.equals(id)) {
+            return this;
+        }
+        if (InSideCarNode.ID.equals(id)) {
+            return null;//todo
+        }
+        return null;
+    }
+
+    public void init(Node parent, String indexInParent, NodeConfig nodeConfig, CombineConfig combineConfig) {
+        initConfig(parent, indexInParent, nodeConfig, combineConfig);
+        initParams(this, getClass());
+        initBindEvent(this,getClass());
+        initPubAndAsk(this,getClass());
+        NodeFactory.updatePoint(this);
+    }
+
+    /**
+     *  初始化Publish和Ask
+     */
+    protected void initPubAndAsk(Point point,Class<?> clazz){
+
+    }
+
+    /**
+     * 初始化节点参数，配置表参数优先与注解上的默认值
+     * @param point
+     * @param clazz
+     */
+    protected void initParams(Point point, Class<?> clazz) {
+        for (Field field : clazz.getDeclaredFields()) {
+            field.setAccessible(true);
+            Config config = field.getAnnotation(Config.class);
+            if (config != null) {
+                Object v = nodeConfig.params.get(field.getName());
+                try {
+                    if (v != null) {//优先读取配置文件的值
+                        if (v instanceof String) {
+                            field.set(point, stringCastBaseType(v, field.getType()));
+                        } else if (v instanceof Long) {
+                            field.set(point, longCastBaseType(v, field.getType()));
+                        } else if (v instanceof Integer) {
+                            field.set(point, intCastBaseType(v, field.getType()));
+                        } else {
+                            throw HomoError.throwError(HomoActivityError.paramCastError, field.getName(), field.getType(), v.getClass().getTypeName());
+                        }
+                    } else if (!StringUtils.isEmpty(config.value())) {//读取注解上的默认值
+                        field.set(point, stringCastBaseType(config.value(), field.getType()));
+                    }
+                } catch (Exception e) {
+                    throw HomoError.throwError(HomoActivityError.initParams, field.getName());
+                }
+            }
+        }
+        Class<?> superclass = clazz.getSuperclass();
+        if (superclass!=null){
+            initParams(point,superclass);
+        }
+    }
+
+    <T> T stringCastBaseType(Object obj, Class<T> tClass) {
+        String value = (String) obj;
+        if (String.class.equals(tClass)) {
+            return (T) value;
+        } else if (Integer.class.equals(tClass)) {
+            return (T) Integer.valueOf(value);
+        } else if (Long.class.equals(tClass)) {
+            return (T) Long.valueOf(value);
+        } else if (Boolean.class.equals(tClass)) {
+            return (T) Boolean.valueOf(value);
+        } else {
+            log.error("不支持的转换类型 {}", tClass.getSimpleName());
+            System.exit(-1);
+            return null;
+        }
+    }
+
+    <T> T longCastBaseType(Object obj, Class<T> tClass) {
+        Long value = (Long) obj;
+        if (String.class.equals(tClass)) {
+            return (T) String.valueOf(value);
+        } else if (Integer.class.equals(tClass)) {
+            return (T) Integer.valueOf(value.intValue());
+        } else if (Long.class.equals(tClass)) {
+            return (T) value;
+        } else if (Boolean.class.equals(tClass)) {
+            return (T) Boolean.valueOf(value > 0);
+        } else {
+            log.error("不支持的转换类型 {}", tClass.getSimpleName());
+            System.exit(-1);
+            return null;
+        }
+    }
+
+    <T> T intCastBaseType(Object obj, Class<T> tClass) {
+        Integer value = (Integer) obj;
+        if (String.class.equals(tClass)) {
+            return (T) String.valueOf(value);
+        } else if (Long.class.equals(tClass)) {
+            return (T) Long.valueOf(value.longValue());
+        } else if (Integer.class.equals(tClass)) {
+            return (T) value;
+        } else if (Boolean.class.equals(tClass)) {
+            return (T) Boolean.valueOf(value > 0);
+        } else {
+            log.error("不支持的转换类型 {}", tClass.getSimpleName());
+            System.exit(-1);
+            return null;
+        }
+    }
+
+
+    public Integer getIntParam(String key) {
+        return getParamValue(key, Integer.class);
+    }
+
+    public String getStringParam(String key) {
+        return getParamValue(key, String.class);
+    }
+
+    public Long getLongParam(String key) {
+        return getParamValue(key, Long.class);
+    }
+
+    public <T> T getParamValue(String key, Class<T> tClass) {
+        return nodeConfig.getParams().get(key, tClass);
+    }
+
+    private void initConfig(Node parent, String indexInParent, NodeConfig nodeConfig, CombineConfig combineConfig) {
+        this.nodeConfig = nodeConfig;
+        this.combineConfig = combineConfig;
+        //将公用配置读取到本节点配置中
+        if (combineConfig != null) {
+            combineConfig.params.forEach(nodeConfig::buildParam);
+        }
+        if (indexInParent == null) {
+            if (parent == null) {
+                //如果没有父节点，说明该节点就是父节点，加个father后缀
+                indexInParent = String.format("%s_%s", getTypeName(), FatherNode.ID);
+            } else {
+                //如果有父节点，取父节点该类型子节点列表大小值+1（这个值会递增）
+                int index = parent.typeToChildNodes.computeIfAbsent(getTypeName(), s -> new ArrayList<>()).size() + 1;
+                indexInParent = String.format("%s_%s", getTypeName(), index);
+            }
+        }
+        indexId = indexInParent;
+        if (parent != null) {//处理子节点
+            parent.addChildNode(this);
+        } else {//处理父节点
+            address = indexId;
+            return;
+        }
+        /*
+         * 读取分组信息
+         */
+        if (nodeConfig.activityId != null) {
+            activityId = nodeConfig.activityId;
+        } else {
+            activityId = combineConfig.activityId;
+        }
+        /*
+         * 设置tag信息
+         */
+        if (nodeConfig.tag != null) {
+            tag = nodeConfig.tag;
+        }
+        path = parent.address;
+        address = path + "/" + indexId;
+    }
+
+
+    public void addChildNode(Node childNode) {
+        childMap.put(childNode.getIndexId(), childNode);
+        typeToChildNodes.computeIfAbsent(childNode.getTypeName(), s -> new ArrayList<>()).add(childNode);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder("node toString ->");
+        Set<SubPoint> pointsAll = subPoints.getAll();
+        pointsAll.forEach(item -> builder.append("[").append(item.msgId).append(":").append(item.eventType).append("]"));
+        return builder.toString();
+    }
 }
