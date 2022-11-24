@@ -4,7 +4,7 @@ import com.homo.core.utils.lang.KKMap;
 import com.homo.game.activity.core.Node;
 import com.homo.game.activity.core.config.CombineConfig;
 import com.homo.game.activity.core.config.NodeConfig;
-import com.homo.game.activity.facade.Point;
+import com.homo.game.activity.core.Point;
 import com.homo.game.activity.facade.annotation.NodeType;
 import com.homo.game.activity.facade.component.Single;
 import lombok.extern.log4j.Log4j2;
@@ -181,9 +181,10 @@ public class NodeFactory {
         return newNode(null, null, nodeConfig);
     }
 
+
     public static Node newNode(Node parent, String indexId, NodeConfig nodeConfig) {
         try {
-            return getOrCreateNode(parent, indexId, nodeConfig);
+            return createNode(parent, indexId, nodeConfig);
         } catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
             log.error("node class not found ({}/{}/{}/{}) ", nodeConfig.getActivityId(), nodeConfig.getTag(), nodeConfig.getTypeName(), nodeConfig.getTypeId());
             log.error("请确保 node的实现有无参构造函数");
@@ -192,7 +193,7 @@ public class NodeFactory {
         }
     }
 
-    public static Node getOrCreateNode(Node parent, String indexId, NodeConfig nodeConfig) throws InvocationTargetException, InstantiationException, IllegalAccessException, NoClassDefFoundError {
+    public static Node createNode(Node parent, String indexId, NodeConfig nodeConfig) throws InvocationTargetException, InstantiationException, IllegalAccessException, NoClassDefFoundError {
         String typeName = nodeConfig.getTypeName();
         Integer typeId = nodeConfig.getTypeId();
         if (typeId != null) {
@@ -219,6 +220,7 @@ public class NodeFactory {
         //根据无参构造函数创建节点
         node = nodeConstructor.newInstance();
         node.init(parent, indexId, nodeConfig, combineConfig);
+        NodeFactory.updatePoint(node);
         if (node instanceof Single) {
             addSingle((Single) node);
         }

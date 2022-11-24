@@ -54,6 +54,8 @@ public class Owner {
      */
     @JSONField(deserialize = false, serialize = false)
     private Node rootNode;
+
+    private NodeData rootNodeData = new NodeData();
     /**
      * owner加载器
      * 当本owner被定时器等异步过程持有,但实际已经在内存中销毁，那么就需要使用加载器重新加载出owner

@@ -3,7 +3,7 @@ package com.homo.game.activity.core.compoment;
 import com.homo.game.activity.core.Node;
 import com.homo.game.activity.core.Owner;
 import com.homo.game.activity.core.data.NodeData;
-import com.homo.game.activity.facade.Point;
+import com.homo.game.activity.core.Point;
 
 /**
  * 组件接口，表示该节点可以被绑定到其他节点上充当插件

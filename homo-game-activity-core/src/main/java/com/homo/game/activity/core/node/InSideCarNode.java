@@ -14,5 +14,9 @@ public class InSideCarNode extends Node {
     /**
      * 本组合节点的父节点
      */
-    public Node owner;
+    public Node hostNode;
+
+    public InSideCarNode(Node hostNode){
+        this.hostNode = hostNode;
+    }
 }

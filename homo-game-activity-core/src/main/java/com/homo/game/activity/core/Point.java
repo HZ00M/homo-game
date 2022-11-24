@@ -1,4 +1,7 @@
-package com.homo.game.activity.facade;
+package com.homo.game.activity.core;
+
+
+import com.homo.game.activity.core.data.NodeData;
 
 public interface Point {
 
@@ -9,4 +12,10 @@ public interface Point {
      * @return
      */
     String getAddress();
+
+    /**
+     * 获取当前节点数据
+     * @return
+     */
+    NodeData getPointData(Owner owner);
 }

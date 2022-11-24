@@ -4,12 +4,12 @@ import com.homo.core.utils.delegate.Delegate2PVoid;
 import com.homo.game.activity.core.Node;
 import com.homo.game.activity.core.compoment.Component;
 import com.homo.game.activity.core.data.NodeData;
-import com.homo.game.activity.facade.Point;
+import com.homo.game.activity.core.Point;
 import com.homo.game.activity.facade.event.Event;
 
 public class PubPoint<T extends Event> extends Delegate2PVoid<NodeData,T> {
-    Point point;
-    String pubPointName;
+    public Point point;
+    public String pubPointName;
 
     public PubPoint(Point point,String pubPointName){
         this.point = point;
@@ -17,7 +17,7 @@ public class PubPoint<T extends Event> extends Delegate2PVoid<NodeData,T> {
     }
 
     public void publish(T event){
-        Node node = null;
+        Node node;
         if (point instanceof Component){
             node = ((Component)point).getNode();
         }else {
