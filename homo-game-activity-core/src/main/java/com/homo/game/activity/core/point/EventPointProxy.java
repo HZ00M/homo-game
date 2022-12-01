@@ -5,11 +5,9 @@ import com.homo.game.activity.core.data.NodeData;
 import com.homo.game.activity.facade.event.Event;
 import com.homo.game.activity.facade.event.EventType;
 
-public class EventPoint extends Delegate2PVoid<NodeData, Event> {
+public class EventPointProxy extends Delegate2PVoid<NodeData, Event> {
     public String eventId;
-    public EventType eventType;
-    public EventPoint(String eventId,EventType eventType){
+    public EventPointProxy(String eventId){
         this.eventId = eventId;
-        this.eventType = eventType;
     }
 }

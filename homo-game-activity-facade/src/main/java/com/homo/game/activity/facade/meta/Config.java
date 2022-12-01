@@ -1,4 +1,4 @@
-package com.homo.game.activity.facade.annotation;
+package com.homo.game.activity.facade.meta;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

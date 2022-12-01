@@ -5,7 +5,7 @@ import com.homo.game.activity.core.Node;
 import com.homo.game.activity.core.config.CombineConfig;
 import com.homo.game.activity.core.config.NodeConfig;
 import com.homo.game.activity.core.Point;
-import com.homo.game.activity.facade.annotation.NodeType;
+import com.homo.game.activity.facade.meta.NodeType;
 import com.homo.game.activity.facade.component.Single;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.core.io.Resource;

@@ -10,15 +10,15 @@ import com.homo.game.activity.facade.event.Event;
  * 请求端点
  *  如果有多个reply，则只返回第一个reply的执行结果
  */
-public class AskPoint<P extends Event,R> extends Delegate2PR<NodeData, Event, Homo<R>> {
+public class AskPointProxy<R> extends Delegate2PR<NodeData, Event, Homo<R>> {
     public Point point;
     public String askPointName;
-    public AskPoint(Point point,String askPointName){
+    public AskPointProxy(Point point, String askPointName){
         this.point = point;
         this.askPointName = askPointName;
     }
 
-    public Homo<R> ask(NodeData nodeData,P event){
+    public Homo<R> ask(NodeData nodeData,Event event){
         Homo<R> rel = publish(nodeData, event);
         if (rel == null){
             return Homo.result(null);

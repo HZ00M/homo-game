@@ -9,7 +9,8 @@ public enum HomoActivityError implements HomoThrowable {
     initParams(202,"node initParams error name %s"),
     paramCastError(203,"paramCastError  fieldName %s fieldType %s configType %s"),
     initPubAndAsk(204,"node initPubAndAsk error name %s"),
-    initComponent(205,"node initComponent error hostNode %s component %s")
+    initComponent(205,"node initComponent error hostNode %s component %s"),
+    onOpenError(206,"node %s open error")
     ;
 
     private int code;

@@ -51,9 +51,26 @@ public interface Component extends Point {
     }
 
     /**
-     * 获取自身数据
+     * 获取自身数据，暂时用不到
      */
     default NodeData getSelfData(Owner owner) {
         return owner.getNodeData(getAddress());
+    }
+
+    /**
+     * 组件数据保存在宿主身上
+     * @param owner
+     * @return
+     */
+    @Override
+    default NodeData getPointData(Owner owner){
+        NodeData nodeData = owner.getNodeData(getNode().getAddress());
+        if (nodeData == null){
+            nodeData = getNode().getPointData(owner);
+        }
+        if (nodeData.owner == null){
+            nodeData.owner = owner;
+        }
+        return nodeData;
     }
 }

@@ -1,12 +1,15 @@
-package com.homo.game.activity.facade.annotation;
+package com.homo.game.activity.facade.meta;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface NodeType {
-    int value();
+@Target(ElementType.METHOD)
+public @interface ReplyPoint {
+    /**
+     * 响应端点
+     */
+    String value() default "";
 }

@@ -5,11 +5,11 @@ import com.homo.core.utils.lang.KKMap;
 import com.homo.core.utils.lang.KVData;
 import com.homo.core.utils.rector.Homo;
 import com.homo.game.activity.core.data.NodeData;
-import com.homo.game.activity.core.point.DynamicBindPoint;
+import com.homo.game.activity.core.point.DynamicBindPointProxy;
 import com.homo.game.activity.facade.event.Event;
-import com.homo.game.activity.facade.event.EventType;
 import lombok.extern.log4j.Log4j2;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -42,7 +42,7 @@ public class Owner {
      * owner消息绑定点列表（msgId-msgType-point）
      * node打开（open）时会将自身的绑定点添加到该owner上
      */
-    protected KKMap<String, EventType, DynamicBindPoint> eventPoints = new KKMap<>();
+    protected Map<String, DynamicBindPointProxy> eventPoints = new HashMap<>();
     /**
      * 节点数据列表（address-nodeData）
      * SerializerFeature.WriteClassName 表示会保存子类的类型信息
@@ -77,16 +77,16 @@ public class Owner {
      * 绑定需要处理某个事件的节点对象
      * 当节点被打开时会调用此函数
      */
-    public void bindEventNode(String eventId, EventType eventType, NodeData nodeData, Integer order) {
-        DynamicBindPoint dynamicBindPoint = eventPoints.get(eventId, eventType);
-        if (dynamicBindPoint == null) {
-            DynamicBindPoint bindPoint = new DynamicBindPoint();
+    public void bindEventNode(String eventId,  NodeData nodeData, Integer order) {
+        DynamicBindPointProxy dynamicBindPointProxy = eventPoints.get(eventId);
+        if (dynamicBindPointProxy == null) {
+            DynamicBindPointProxy bindPoint = new DynamicBindPointProxy();
             if (order != null) {
                 bindPoint.bind(nodeData, order);
             } else {
                 bindPoint.bindToTail(nodeData);
             }
-            eventPoints.set(eventId, eventType, bindPoint);
+            eventPoints.put(eventId, bindPoint);
         }
     }
 
@@ -94,9 +94,9 @@ public class Owner {
      * 取消某个节点对象与事件的绑定
      * 取消绑定后，当收到匹配的事件后不再通知取消的node对象处理
      */
-    public void unbindEventNode(String eventId, EventType eventType, NodeData nodeData) {
-        DynamicBindPoint dynamicBindPoint = eventPoints.get(eventId, eventType);
-        dynamicBindPoint.unbind(nodeData);
+    public void unbindEventNode(String eventId, NodeData nodeData) {
+        DynamicBindPointProxy dynamicBindPointProxy = eventPoints.get(eventId);
+        dynamicBindPointProxy.unbind(nodeData);
     }
 
     /**
@@ -104,10 +104,10 @@ public class Owner {
      * 如果没有一个节点关注该事件就将该关注点删除
      */
     public void onEvent(Event event) throws Exception {
-        DynamicBindPoint bindPoint = eventPoints.get(event.getId(), event.getType());
+        DynamicBindPointProxy bindPoint = eventPoints.get(event.getId());
         if (bindPoint != null) {
             if (bindPoint.isEmpty()) {
-                eventPoints.remove(event.getId(), event.getType());//todo 这里需要验证bindPoint是否会被回收
+                eventPoints.remove(event.getId());//todo 这里需要验证bindPoint是否会被回收
             } else {
                 bindPoint.broadcast(this, event);
             }
@@ -118,7 +118,7 @@ public class Owner {
      * 重置数据
      */
     public void resetData(){
-        eventPoints = new KKMap<>();
+        eventPoints = new HashMap<>();
         ownerData = new KVData();
         nodeDataMap = new ConcurrentHashMap<>();
         //todo 打开根节点
@@ -141,6 +141,16 @@ public class Owner {
     public NodeData getNodeData(String address) {
         return nodeDataMap.get(address);
     }
+
+//    /**
+//     * 创建并绑定节点数据
+//     */
+//    public NodeData createAndBindNodeData(Point point){
+//        NodeData nodeData = getNodeData(point.getAddress());
+//        if (nodeData == null){
+//            nodeData = point.createNodeData(this);
+//        }
+//    }
 
     public void onDestroy() {
         //todo 落地

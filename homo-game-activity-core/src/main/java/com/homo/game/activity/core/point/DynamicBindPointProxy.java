@@ -8,7 +8,7 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.util.Assert;
 
 @Log4j2
-public class DynamicBindPoint extends BroadCasterCall<NodeData> {
+public class DynamicBindPointProxy extends BroadCasterCall<NodeData> {
     @Override
     protected Boolean execute(NodeData nodeData, Object... objects) throws Exception {
         //objects[0]是owner

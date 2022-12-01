@@ -18,4 +18,6 @@ public interface Point {
      * @return
      */
     NodeData getPointData(Owner owner);
+
+//    NodeData createNodeData(Owner owner);
 }

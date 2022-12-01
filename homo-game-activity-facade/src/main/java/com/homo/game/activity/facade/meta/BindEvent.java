@@ -1,4 +1,4 @@
-package com.homo.game.activity.facade.annotation;
+package com.homo.game.activity.facade.meta;
 
 import com.homo.game.activity.facade.event.EventType;
 

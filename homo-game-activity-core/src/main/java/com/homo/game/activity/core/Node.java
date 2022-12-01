@@ -11,14 +11,17 @@ import com.homo.game.activity.core.config.NodeConfig;
 import com.homo.game.activity.core.data.NodeData;
 import com.homo.game.activity.core.exception.HomoActivityError;
 import com.homo.game.activity.core.factory.NodeFactory;
-import com.homo.game.activity.core.node.FatherNode;
 import com.homo.game.activity.core.node.InSideCarNode;
 import com.homo.game.activity.core.node.OutSideCarNode;
 import com.homo.game.activity.core.point.*;
-import com.homo.game.activity.facade.annotation.*;
+import com.homo.game.activity.facade.meta.*;
 import com.homo.game.activity.facade.component.Single;
 import com.homo.game.activity.facade.event.Event;
 import com.homo.game.activity.facade.event.EventType;
+import com.homo.game.activity.facade.meta.AskPoint;
+import com.homo.game.activity.facade.meta.PubPoint;
+import com.homo.game.activity.facade.meta.ReplyPoint;
+import com.homo.game.activity.facade.meta.SubPoint;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 import org.apache.commons.lang3.StringUtils;
@@ -52,6 +55,8 @@ public abstract class Node implements Point {
     public static String SELF_ID = "Self";
 
     public static String PARENT_ID = "Parent";
+
+    public static String FATHER_ID = "Father";
     /**
      * 节点工厂
      * 负责节点的创建和管理，所有节点实例都保存在工厂中，通过address获取
@@ -161,31 +166,34 @@ public abstract class Node implements Point {
     public NodeConfig nodeConfig;
 
     /**
-     * 本节点响应外部请求端点列表
-     */
-    public Map<String, ReplyPoint<Homo<Event>>> replyPoints = new HashMap<>();
-
-    /**
+     * askPointName->AskPoint
      * 本节点向外发出请求端点列表
      */
-    public Map<String, AskPoint<Event, Event>> askPoints = new HashMap<>();
+    public Map<String, AskPointProxy<Event>> askPoints = new HashMap<>();
 
     /**
-     * pointName->subPoint
-     * 本节点订阅端点列表
+     * replyPointName->ReplyPoint
+     * 本节点响应外部请求端点列表
      */
-    public Map<String, SubPoint> subPoints = new HashMap<>();
+    public Map<String, ReplyPointProxy> replyPoints = new HashMap<>();
 
     /**
-     * eventId-eventPoint
-     * 本节点订阅事件端点列表（可以是外部上报事件ReportEvent，也可以是内部传播事件InnerEvent）
-     */
-    public Map<String, EventPoint> eventPoints = new HashMap<>();
-
-    /**
+     * pubPointName->PubPoint
      * 本节点向外发布的事件端点列表
      */
-    public Map<String, PubPoint<Event>> pubPoints = new HashMap<>();
+    public Map<String, PubPointProxy> pubPoints = new HashMap<>();
+
+    /**
+     * subPointName->SubPoint
+     * 本节点订阅端点列表
+     */
+    public Map<String, SubPointProxy> subPoints = new HashMap<>();
+
+    /**
+     * eventId-EventPoint
+     * 本节点订阅事件端点列表（可以是外部上报事件ReportEvent，也可以是内部传播事件InnerEvent）
+     */
+    public Map<String, EventPointProxy> eventPoints = new HashMap<>();
 
 
     /**
@@ -215,6 +223,101 @@ public abstract class Node implements Point {
     public static String getTypeName(Class<?> clazz) {
         return typeNameCacheMap.computeIfAbsent(clazz, Class::getSimpleName);
     }
+
+    /**
+     * 开启当前节点
+     */
+    public void open(NodeData nodeData, Event event) throws Exception {
+        NodeData selfData = getNodeData(nodeData);
+        if (nodeData.owner.isDestroy()) {
+            nodeData.owner.reload()
+                    .consumerValue(loadOwner -> {
+                        try {
+                            processOpen(selfData, event);
+                            processPublish(selfData, event);
+                        } catch (Exception e) {
+                            throw HomoError.throwError(HomoActivityError.onOpenError,getAddress());
+                        }
+                    })
+                    .catchError(throwable ->
+                            log.error("open address {} error", address)
+                    ).start();
+        } else {
+            processOpen(selfData, event);
+            processPublish(selfData, event);
+        }
+    }
+
+    /**
+     * 节点打开流程 open->processOpen->onOpen
+     * 处理打开逻辑， 第一次打开时会创建数据，绑定上报事件
+     * 如果是父节点，还需打开inSideCarNode
+     */
+    protected void processOpen(NodeData parentData, Event event) throws Exception{
+        NodeData selfNodeData = parentData.owner.getNodeData(getAddress());
+        if (selfNodeData == null) {
+            selfNodeData = getOrCreateNodeData(parentData.owner);
+        }
+
+        if (!selfNodeData.isOpen) {
+            bindEventToOwner(selfNodeData, event);
+        }
+
+        onOpen(selfNodeData,event);
+
+        if (inSideCarNode != null){
+            inSideCarNode.open(selfNodeData,event);
+        }
+
+        selfNodeData.isOpen = true;
+    }
+
+    protected void onFirstOpen(NodeData nodeData, Event event) throws Exception {//留给子类实现
+    }
+
+    protected void onOpen(NodeData nodeData, Event event) throws Exception {//留给子类实现
+    }
+
+    /**
+     * 将节点上的@BindEvent事件绑定到用户身上
+     */
+    protected void bindEventToOwner(NodeData ownerNodeData, Event event) {
+        eventPoints.forEach((s, eventPointProxy) -> {
+            ownerNodeData.owner.bindEventNode(eventPointProxy.eventId, ownerNodeData, null);
+        });
+    }
+
+    /**
+     * 获取
+     */
+
+    /**
+     * 创建绑定节点数据
+     */
+    public NodeData getOrCreateNodeData(Owner owner) {
+        NodeData nodeData = owner.getNodeData(getAddress());
+        if (nodeData == null) {
+            nodeData = new NodeData();
+            nodeData.owner = owner;
+            owner.setNodeData(getAddress(), nodeData);
+        }
+        return nodeData;
+    }
+
+    /**
+     * 获取节点自身的数据
+     *
+     * @param nodeData 参数数据 （可能是本节点的数据对象，也可能不是）
+     * @return
+     */
+    protected NodeData getNodeData(NodeData nodeData) {
+        //如果nodeData所绑定的节点不是当前节点，则从gunner获取数据
+        if (nodeData.point != this) {
+            return getPointData(nodeData.owner);
+        }
+        return nodeData;
+    }
+
 
     /**
      * 通过注解构造需要处理的上报事件列表
@@ -265,12 +368,12 @@ public abstract class Node implements Point {
      * 注册订阅事件
      */
     public void registerSubFun(String msgId, EventType eventType, int order, Delegate2PVoid.ExecuteFun<NodeData, Event> subFun) {
-        EventPoint eventPoint = eventPoints.get(msgId);
-        if (eventPoint == null) {
-            eventPoint = new EventPoint(msgId, eventType);
-            eventPoints.put(msgId, eventPoint);
+        EventPointProxy eventPointProxy = eventPoints.get(msgId);
+        if (eventPointProxy == null) {
+            eventPointProxy = new EventPointProxy(msgId);
+            eventPoints.put(msgId, eventPointProxy);
         }
-        eventPoint.bind(subFun, order);
+        eventPointProxy.bind(subFun, order);
         //todo 绑定事件
     }
 
@@ -278,10 +381,10 @@ public abstract class Node implements Point {
      * 分发事件
      */
     public void dispatchEvent(NodeData nodeData, Event event) {
-        SubPoint subPoint = subPoints.get(event.getId());
-        if (subPoint != null) {//该节点有订阅该事件的端点，分发事件
-            subPoint.publish(nodeData, event);
-            processPublish(nodeData);
+        SubPointProxy subPointProxy = subPoints.get(event.getId());
+        if (subPointProxy != null) {//该节点有订阅该事件的端点，分发事件
+            subPointProxy.publish(nodeData, event);
+            processPublish(nodeData, event);
         } else {
             log.info("dispatchEvent node {} not subPoint msgId {}", Node.getTypeName(this.getClass()), event.getId());
         }
@@ -290,7 +393,7 @@ public abstract class Node implements Point {
     /**
      * 该节点待发布的事件列表
      */
-    public ThreadLocal<List<Tuple2<String, Event>>> threadLocalPrePubList = new InheritableThreadLocal<>();
+    public static ThreadLocal<List<Tuple2<String, Event>>> threadLocalPrePubList = new InheritableThreadLocal<>();
 
     public <T extends Event> void publish(String pointName, T event) {
         List<Tuple2<String, Event>> prePubList = getPrePubList();
@@ -315,13 +418,13 @@ public abstract class Node implements Point {
     /**
      * 处理该节点pub事件
      */
-    public void processPublish(NodeData nodeData) {
+    public void processPublish(NodeData nodeData, Event event) {
         List<Tuple2<String, Event>> pubList = popPubList();
         if (!CollectionUtils.isEmpty(pubList)) {
             pubList.forEach(item -> {
-                pubPoints.computeIfPresent(item.getT1(), (msgId, pubPoint) -> {
-                    pubPoint.publish(nodeData, item.getT2());
-                    return pubPoint;
+                pubPoints.computeIfPresent(item.getT1(), (msgId, pubPointProxy) -> {
+                    pubPointProxy.publish(nodeData, item.getT2());
+                    return pubPointProxy;
                 });
             });
         }
@@ -331,9 +434,9 @@ public abstract class Node implements Point {
      * 将该节点关注的事件绑定到owner的事件关注点
      */
     public void bindSubEvent(NodeData nodeData) {
-        Collection<EventPoint> pointsAll = eventPoints.values();
+        Collection<EventPointProxy> pointsAll = eventPoints.values();
         pointsAll.forEach(point -> {
-            nodeData.getOwner().bindEventNode(point.eventId, point.eventType, nodeData, null);//默认添加到对尾
+            nodeData.getOwner().bindEventNode(point.eventId, nodeData, null);//默认添加到对尾
         });
     }
 
@@ -341,9 +444,9 @@ public abstract class Node implements Point {
      * 将该节点关注的事件从owner上解除绑定
      */
     public void unbindSubEvent(NodeData nodeData) {
-        Collection<EventPoint> pointsAll = eventPoints.values();
+        Collection<EventPointProxy> pointsAll = eventPoints.values();
         pointsAll.forEach(point -> {
-            nodeData.getOwner().unbindEventNode(point.eventId, point.eventType, nodeData);
+            nodeData.getOwner().unbindEventNode(point.eventId, nodeData);
         });
     }
 
@@ -379,16 +482,21 @@ public abstract class Node implements Point {
         initPubAndAsk(this, getClass());
         initSubAndReply(this, getClass());
         initComponent(this, getClass());
-        if (FatherNode.class.isAssignableFrom(this.getClass()) && combineConfig != null) {
-            FatherNode fatherNode = (FatherNode) this;
-            initOutSideCar(fatherNode);
-            initInSideCar(fatherNode);
-            initChildNode(fatherNode);
-            initConnect(fatherNode);
+        if (combineConfig != null) {
+            initOutSideCar(this);
+            initInSideCar(this);
+            initChildNode(this);
+            initConnect(this);
         }
+        childMap.forEach((s, node) -> {
+            node.doOnAfterParentInit();
+        });
     }
 
-    protected void initConnect(FatherNode fatherNode) {
+    protected void doOnAfterParentInit() {
+    }
+
+    protected void initConnect(Node fatherNode) {
         combineConfig.connects.forEach((srcId, connect) -> {
             //获得出口节点
             Node srcNode = getChildById(srcId);
@@ -399,41 +507,41 @@ public abstract class Node implements Point {
                 Node descNode = getChildById(address);
                 srcNode.askConnectReply(srcNode, srcPointName, descNode, descPointName);
             });
-            connect.pubTo.forEach((srcPointName,map)->{
-                map.forEach((descAddress,subPointName)->{
+            connect.pubTo.forEach((srcPointName, map) -> {
+                map.forEach((descAddress, subPointName) -> {
                     //获得入口端点
                     Node descNode = getChildById(descAddress);
-                    srcNode.pubConnectSub(srcNode,srcPointName,descNode,subPointName);
+                    srcNode.pubConnectSub(srcNode, srcPointName, descNode, subPointName);
                 });
             });
         });
     }
 
     protected void pubConnectSub(Node srcNode, String srcPointName, Node descNode, String descPointName) {
-        PubPoint<Event> pubPoint = srcNode.pubPoints.get(srcPointName);
-        if (pubPoint == null){
-            log.error("pubConnectSub srcNode {} descNode {} srcPointName {} descPointName {} not exist ",srcNode,descNode,srcPointName,descPointName);
-        }else {
-            pubPoint.append(descNode.subPoints.get(descPointName));
+        PubPointProxy pubPointProxy = srcNode.pubPoints.get(srcPointName);
+        if (pubPointProxy == null) {
+            log.error("pubConnectSub srcNode {} descNode {} srcPointName {} descPointName {} not exist ", srcNode, descNode, srcPointName, descPointName);
+        } else {
+            pubPointProxy.append(descNode.subPoints.get(descPointName));
         }
     }
 
     protected void askConnectReply(Node srcNode, String srcPointName, Node descNode, String descPointName) {
-        AskPoint<Event, Event> askPoint = srcNode.askPoints.get(srcPointName);
-        if (askPoint == null){
-            log.error("askConnectReply srcNode {} descNode {} srcPointName {} descPointName {} not exist ",srcNode,descNode,srcPointName,descPointName);
-        }else {
-            askPoint.append(descNode.replyPoints.get(descPointName));
+        AskPointProxy askPointProxy = srcNode.askPoints.get(srcPointName);
+        if (askPointProxy == null) {
+            log.error("askConnectReply srcNode {} descNode {} srcPointName {} descPointName {} not exist ", srcNode, descNode, srcPointName, descPointName);
+        } else {
+            askPointProxy.append(descNode.replyPoints.get(descPointName));
         }
     }
 
-    protected void initChildNode(FatherNode fatherNode) {
+    protected void initChildNode(Node fatherNode) {
         combineConfig.childNodeConfigs.forEach((configId, nodeConfig) -> {
             NodeFactory.newNode(fatherNode, configId, nodeConfig);
         });
     }
 
-    protected void initInSideCar(FatherNode fatherNode) {
+    protected void initInSideCar(Node fatherNode) {
         inSideCarNode = (InSideCarNode) NodeFactory.newNode(fatherNode, InSideCarNode.ID, new NodeConfig(Node.getTypeName(InSideCarNode.class)));
         //父节点的ask要暴露到外部获取外部的值
         Set<String> askPointSet = new HashSet<>(this.askPoints.keySet());
@@ -444,17 +552,17 @@ public abstract class Node implements Point {
             Delegate2PR.ExecuteFun<NodeData, Event, Homo<Event>> replyFun = new Delegate2PR.ExecuteFun<NodeData, Event, Homo<Event>>() {
                 @Override
                 public Homo<Event> apply(NodeData nodeData, Event event) throws Exception {
-                    AskPoint<Event, Event> askPoint = inSideCarNode.askPoints.get(pointName);
-                    if (askPoint == null) {
+                    AskPointProxy<Event> askPointProxy = inSideCarNode.askPoints.get(pointName);
+                    if (askPointProxy == null) {
                         return Homo.result(null);
                     }
-                    return askPoint.publish(nodeData, event);
+                    return askPointProxy.publish(nodeData, event);
                 }
             };
             //内部的ask可以通过inSideCarNode的reply获取值
-            inSideCarNode.replyPoints.computeIfAbsent(pointName, s -> new ReplyPoint(inSideCarNode, pointName)).bindToTail(replyFun);
+            inSideCarNode.replyPoints.computeIfAbsent(pointName, s -> new ReplyPointProxy(inSideCarNode, pointName)).bindToTail(replyFun);
             //暴露ask到外部获取外部的值
-            inSideCarNode.askPoints.put(pointName, new AskPoint(inSideCarNode, pointName));
+            inSideCarNode.askPoints.put(pointName, new AskPointProxy(inSideCarNode, pointName));
         });
         //对外部的sub转化为对内部的pub
         Set<String> subPointSet = new HashSet<>(this.subPoints.keySet());
@@ -464,22 +572,22 @@ public abstract class Node implements Point {
             Delegate2PVoid.ExecuteFun<NodeData, Event> subFun = new Delegate2PVoid.ExecuteFun<NodeData, Event>() {
                 @Override
                 public void run(NodeData nodeData, Event event) throws Exception {
-                    PubPoint<Event> pubPoint = inSideCarNode.pubPoints.get(pointName);
-                    if (pubPoint == null) {
+                    PubPointProxy pubPointProxy = inSideCarNode.pubPoints.get(pointName);
+                    if (pubPointProxy == null) {
                         return;
                     }
-                    pubPoint.publish(event);
+                    pubPointProxy.publish(event);
                 }
             };
-            inSideCarNode.subPoints.computeIfAbsent(pointName, s -> new SubPoint(inSideCarNode, pointName)).bindToHead(subFun);//todo 这里需要验证
-            inSideCarNode.pubPoints.put(pointName, new PubPoint(inSideCarNode, pointName));
+            inSideCarNode.subPoints.computeIfAbsent(pointName, s -> new SubPointProxy(inSideCarNode, pointName)).bindToHead(subFun);//todo 这里需要验证
+            inSideCarNode.pubPoints.put(pointName, new PubPointProxy(inSideCarNode, pointName));
         });
     }
 
     /**
      * 初始化类型数据，添加所有子节点
      */
-    protected void initOutSideCar(FatherNode fatherNode) {
+    protected void initOutSideCar(Node fatherNode) {
         outSideCarNode = (OutSideCarNode) NodeFactory.newNode(fatherNode, OutSideCarNode.ID, new NodeConfig(Node.getTypeName(OutSideCarNode.class)));
         //父节点的reply代表需要暴露给外部
         Set<String> pointSet = new HashSet<>(this.replyPoints.keySet());
@@ -490,17 +598,17 @@ public abstract class Node implements Point {
             Delegate2PR.ExecuteFun<NodeData, Event, Homo<Event>> replyFun = new Delegate2PR.ExecuteFun<NodeData, Event, Homo<Event>>() {
                 @Override
                 public Homo<Event> apply(NodeData nodeData, Event event) throws Exception {
-                    Delegate2PR<NodeData, Event, Homo<Event>> askPoint = outSideCarNode.askPoints.get(pointName);
-                    if (askPoint == null) {
+                    Delegate2PR<NodeData, Event, Homo<Event>> askPointDelegate = outSideCarNode.askPoints.get(pointName);
+                    if (askPointDelegate == null) {
                         return Homo.result(null);
                     }
-                    return askPoint.publish(nodeData, event);
+                    return askPointDelegate.publish(nodeData, event);
                 }
             };
             //将外部需要的reply转换为对内部的ask用以从内部获取值
-            outSideCarNode.replyPoints.computeIfAbsent(pointName, s -> new ReplyPoint(outSideCarNode, pointName)).bindToTail(replyFun);
+            outSideCarNode.replyPoints.computeIfAbsent(pointName, s -> new ReplyPointProxy(outSideCarNode, pointName)).bindToTail(replyFun);
             //转换成OutSideCar向内部的ask
-            outSideCarNode.askPoints.put(pointName, new AskPoint(outSideCarNode, pointName));
+            outSideCarNode.askPoints.put(pointName, new AskPointProxy(outSideCarNode, pointName));
         });
 
         //将内部的publish暴露给外部sub
@@ -511,15 +619,15 @@ public abstract class Node implements Point {
             Delegate2PVoid.ExecuteFun<NodeData, Event> subFun = new Delegate2PVoid.ExecuteFun<NodeData, Event>() {
                 @Override
                 public void run(NodeData nodeData, Event event) throws Exception {
-                    PubPoint<Event> pubPoint = inSideCarNode.pubPoints.get(pointName);
-                    if (pubPoint == null) {
+                    PubPointProxy pubPointProxy = inSideCarNode.pubPoints.get(pointName);
+                    if (pubPointProxy == null) {
                         return;
                     }
-                    pubPoint.publish(event);
+                    pubPointProxy.publish(event);
                 }
             };
-            outSideCarNode.subPoints.computeIfAbsent(pointName, s -> new SubPoint(outSideCarNode, pointName)).bindToHead(subFun);//todo 这里需要验证
-            outSideCarNode.pubPoints.put(pointName, new PubPoint(outSideCarNode, pointName));
+            outSideCarNode.subPoints.computeIfAbsent(pointName, s -> new SubPointProxy(outSideCarNode, pointName)).bindToHead(subFun);//todo 这里需要验证
+            outSideCarNode.pubPoints.put(pointName, new PubPointProxy(outSideCarNode, pointName));
         });
     }
 
@@ -578,7 +686,7 @@ public abstract class Node implements Point {
     protected void initSubAndReply(Point point, Class<?> clazz) {
         Method[] methods = clazz.getDeclaredMethods();
         for (Method method : methods) {
-            Reply reply = method.getAnnotation(Reply.class);
+            ReplyPoint reply = method.getAnnotation(ReplyPoint.class);
             if (reply != null) {
                 method.setAccessible(true);
                 String pointName = method.getName();
@@ -603,44 +711,47 @@ public abstract class Node implements Point {
                             Homo<Event> rel = (Homo<Event>) method.invoke(point, point.getPointData(nodeData.owner), event);
                             rel.nextValue(ret -> {
                                 //可能产生新的Pub事件
-                                processPublish(point.getPointData(nodeData.owner));
+                                processPublish(point.getPointData(nodeData.owner),ret);
                                 return ret;
                             });
                             return rel;
                         }
                     };
                 }
-                ReplyPoint replyPoint = new ReplyPoint(this, pointName);
-                replyPoint.bindToTail(replyFun);
-                if (point instanceof Component){//如果是组件则绑定到宿主节点上
+                ReplyPointProxy replyPointProxy = new ReplyPointProxy(this, pointName);
+                replyPointProxy.bindToTail(replyFun);
+                if (point instanceof Component) {//如果是组件则绑定到宿主节点上
                     Component component = (Component) point;
-                    component.getNode().replyPoints.put(pointName, replyPoint);
-                }else {
-                    replyPoints.put(pointName, replyPoint);
+                    component.getNode().replyPoints.put(pointName, replyPointProxy);
+                } else {
+                    replyPoints.put(pointName, replyPointProxy);
                 }
 
             }
 
-            Subscription subscription = method.getAnnotation(Subscription.class);
-            if (subscription != null) {
+            SubPoint subPoint = method.getAnnotation(SubPoint.class);
+            if (subPoint != null) {
                 method.setAccessible(true);
                 String pointName = method.getName();
                 if (!StringUtils.isEmpty(reply.value())) {
-                    pointName = subscription.value();
+                    pointName = subPoint.value();
                 }
                 Delegate2PVoid.ExecuteFun<NodeData, Event> subFun = new Delegate2PVoid.ExecuteFun<NodeData, Event>() {
                     @Override
                     public void run(NodeData nodeData, Event event) throws Exception {
-                        method.invoke(point, point.getPointData(nodeData.owner), event);
-                        processPublish(point.getPointData(nodeData.owner));
+                        Object exeEvent = method.invoke(point, point.getPointData(nodeData.owner), event);
+                        if (exeEvent instanceof Event){
+                            event = (Event) exeEvent;
+                        }
+                        processPublish(point.getPointData(nodeData.owner),event);
                     }
                 };
                 String finalPointName = pointName;
-                if (point instanceof Component){//如果是组件则绑定到宿主节点上
+                if (point instanceof Component) {//如果是组件则绑定到宿主节点上
                     Component component = (Component) point;
-                    component.getNode().subPoints.computeIfAbsent(pointName, s -> new SubPoint(point, finalPointName)).bind(subFun, subscription.order());
-                }else {
-                    subPoints.computeIfAbsent(pointName, s -> new SubPoint(point, finalPointName)).bind(subFun, subscription.order());
+                    component.getNode().subPoints.computeIfAbsent(pointName, s -> new SubPointProxy(point, finalPointName)).bind(subFun, subPoint.order());
+                } else {
+                    subPoints.computeIfAbsent(pointName, s -> new SubPointProxy(point, finalPointName)).bind(subFun, subPoint.order());
                 }
             }
         }
@@ -653,39 +764,39 @@ public abstract class Node implements Point {
         Field[] fields = clazz.getDeclaredFields();
         for (Field field : fields) {
             field.setAccessible(true);
-            if (field.getType().isAssignableFrom(PubPoint.class)) {
+            if (field.getType().isAssignableFrom(PubPointProxy.class)) {
                 String pointName = field.getName();
-                Publish publish = field.getAnnotation(Publish.class);
+                PubPoint publish = field.getAnnotation(PubPoint.class);
                 if (publish != null) {
                     pointName = publish.value();
                 }
                 try {
-                    PubPoint pubPoint = new PubPoint(point, pointName);
-                    field.set(point, pubPoint);
-                    if (point instanceof Component){//如果是组件则绑定到宿主节点上
+                    PubPointProxy pubPointProxy = new PubPointProxy(point, pointName);//todo 内部直接调用
+                    field.set(point, pubPointProxy);
+                    if (point instanceof Component) {//如果是组件则绑定到宿主节点上
                         Component component = (Component) point;
-                        component.getNode().pubPoints.put(pointName, pubPoint);
-                    }else {
-                        this.pubPoints.put(pointName, pubPoint);
+                        component.getNode().pubPoints.put(pointName, pubPointProxy);
+                    } else {
+                        this.pubPoints.put(pointName, pubPointProxy);
                     }
                 } catch (IllegalAccessException e) {
                     throw HomoError.throwError(HomoActivityError.initPubAndAsk, pointName);
                 }
             }
-            if (field.getType().isAssignableFrom(AskPoint.class)) {
+            if (field.getType().isAssignableFrom(AskPointProxy.class)) {
                 String pointName = field.getName();
-                Ask ask = field.getAnnotation(Ask.class);
+                AskPoint ask = field.getAnnotation(AskPoint.class);
                 if (ask != null) {
                     pointName = ask.value();
                 }
                 try {
-                    AskPoint askPoint = new AskPoint(point, pointName);
-                    field.set(point, askPoint);
-                    if (point instanceof Component){//如果是组件则绑定到宿主节点上
+                    AskPointProxy askPointProxy = new AskPointProxy(point, pointName);//todo 内部直接调用
+                    field.set(point, askPointProxy);
+                    if (point instanceof Component) {//如果是组件则绑定到宿主节点上
                         Component component = (Component) point;
-                        component.getNode().askPoints.put(pointName, askPoint);
-                    }else {
-                        askPoints.put(pointName, askPoint);
+                        component.getNode().askPoints.put(pointName, askPointProxy);
+                    } else {
+                        askPoints.put(pointName, askPointProxy);
                     }
 
                 } catch (IllegalAccessException e) {
@@ -789,7 +900,7 @@ public abstract class Node implements Point {
 
     @Override
     public NodeData getPointData(Owner owner) {
-        return null;
+        return owner.getNodeData(address);
     }
 
     public Integer getIntParam(String key) {
@@ -820,7 +931,7 @@ public abstract class Node implements Point {
         if (indexInParent == null) {
             if (parent == null) {
                 //如果没有父节点，说明该节点就是父节点，加个father后缀
-                indexInParent = String.format("%s_%s", getTypeName(), FatherNode.ID);
+                indexInParent = String.format("%s_%s", getTypeName(), Node.FATHER_ID);
             } else {
                 //如果有父节点，取父节点该类型子节点列表大小值+1（这个值会递增）
                 int index = parent.typeToChildNodes.computeIfAbsent(getTypeName(), s -> new ArrayList<>()).size() + 1;
@@ -861,8 +972,8 @@ public abstract class Node implements Point {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder("node toString ->");
-        Collection<EventPoint> pointsAll = eventPoints.values();
-        pointsAll.forEach(item -> builder.append("[").append(item.eventId).append(":").append(item.eventType).append("]"));
+        Collection<EventPointProxy> pointsAll = eventPoints.values();
+        pointsAll.forEach(item -> builder.append("[").append(item.eventId).append("]"));
         return builder.toString();
     }
 }

@@ -20,6 +20,7 @@ public class NodeData extends KVData {
     public boolean isOpen;
     public String address;
     public String tag;
+    private boolean isDestroyed = false;
     @JSONField(serialzeFeatures = SerializerFeature.WriteClassName)
     public Map<String, NodeData> childData = new HashMap<>();
     @JSONField(deserialize = false, serialize = false)
@@ -30,5 +31,7 @@ public class NodeData extends KVData {
     public Point point;//该NodeData所属的point，可能是node也可能是component
     @JSONField(deserialize = false, serialize = false)
     public Node mainNode;//node和component都是获取宿主节点
+
+
 
 }

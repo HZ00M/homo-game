@@ -1,7 +1,7 @@
 package com.homo.game.activity.core.config;
 
 import com.alibaba.fastjson.JSONObject;
-import com.homo.game.activity.core.node.FatherNode;
+import com.homo.game.activity.core.Node;
 import com.homo.game.activity.core.node.InSideCarNode;
 import com.homo.game.activity.core.node.OutSideCarNode;
 import lombok.extern.log4j.Log4j2;
@@ -104,11 +104,11 @@ public class JsonGraphLoader {
                     srcNodeId);
             connect.askTo.forEach(((askPointName, stringStringTpfTuple2) -> {
                 log.info("typeName {} childNode {} askPointName {} askTo childNode {} replyPointName {}", typeName, srcNodeId, askPointName, stringStringTpfTuple2.getT1(), stringStringTpfTuple2.getT2());
-                Assert.isTrue(combineConfig.childNodeConfigs.containsKey(stringStringTpfTuple2.getT1()) || InSideCarNode.ID.equals(stringStringTpfTuple2.getT1()) || FatherNode.ID.equals(stringStringTpfTuple2.getT1()));
+                Assert.isTrue(combineConfig.childNodeConfigs.containsKey(stringStringTpfTuple2.getT1()) || InSideCarNode.ID.equals(stringStringTpfTuple2.getT1()) || Node.FATHER_ID.equals(stringStringTpfTuple2.getT1()));
             }));
             connect.pubTo.forEach(((subscriptionPointName, nodeIdToPointNames) -> nodeIdToPointNames.forEach((nodeId, publishPointName) -> {
                 log.info("typeName {} childNode {} subName {} publishTo childNode {} pubName {}", typeName, srcNodeId, subscriptionPointName, nodeId, publishPointName);
-                Assert.isTrue(combineConfig.childNodeConfigs.containsKey(nodeId) || OutSideCarNode.ID.equals(nodeId) || FatherNode.ID.equals(nodeId), nodeId);
+                Assert.isTrue(combineConfig.childNodeConfigs.containsKey(nodeId) || OutSideCarNode.ID.equals(nodeId) || Node.FATHER_ID.equals(nodeId), nodeId);
             })));
         }));
         return combineConfig;

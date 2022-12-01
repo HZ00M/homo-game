@@ -1,4 +1,4 @@
-package com.homo.game.activity.facade.annotation;
+package com.homo.game.activity.facade.meta;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -6,10 +6,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.FIELD)
-public @interface Publish {
+@Target(ElementType.METHOD)
+public @interface AskPoint {
     /**
-     * publish端点
+     * 请求端点
      */
     String value();
 }

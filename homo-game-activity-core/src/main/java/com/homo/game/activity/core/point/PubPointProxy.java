@@ -7,11 +7,11 @@ import com.homo.game.activity.core.data.NodeData;
 import com.homo.game.activity.core.Point;
 import com.homo.game.activity.facade.event.Event;
 
-public class PubPoint<T extends Event> extends Delegate2PVoid<NodeData,T> {
+public class PubPointProxy<T extends Event> extends Delegate2PVoid<NodeData,T> {
     public Point point;
     public String pubPointName;
 
-    public PubPoint(Point point,String pubPointName){
+    public PubPointProxy(Point point, String pubPointName){
         this.point = point;
         this.pubPointName = pubPointName;
     }
