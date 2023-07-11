@@ -5,8 +5,8 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.homo</groupId>
-        <artifactId>homo-root</artifactId>
-        <version>1.0</version>
+        <artifactId>homo-core</artifactId>
+        <version>1.1</version>
     </parent>
 
     <artifactId>homo-game</artifactId>
@@ -14,9 +14,10 @@
     <version>${revision}</version>
 
     <properties>
-        <homo.core.version>1.0</homo.core.version>
+<!--        <homo.core.version>1.0</homo.core.version>-->
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
+        <sentinel.version>1.8.3</sentinel.version>
         <revision>1.0</revision>
     </properties>
 
@@ -24,14 +25,18 @@
         <module>homo-game-persistent-server</module>
         <module>homo-game-activity-core</module>
         <module>homo-game-activity-facade</module>
+        <module>homo-common-proxy</module>
+        <module>homo-common-proxy-facade</module>
+        <module>homo-game-proxy</module>
+        <module>homo-game-proxy-facade</module>
     </modules>
 
     <dependencies>
-        <dependency>
-            <groupId>com.homo</groupId>
-            <artifactId>homo-core</artifactId>
-            <version>${homo.core.version}</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.homo</groupId>-->
+<!--            <artifactId>homo-core</artifactId>-->
+<!--            <version>${homo.core.version}</version>-->
+<!--        </dependency>-->
     </dependencies>
 
     <dependencyManagement>
@@ -55,6 +60,37 @@
                 <groupId>com.homo</groupId>
                 <artifactId>homo-game-client-proto</artifactId>
                 <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.homo</groupId>
+                <artifactId>homo-common-proxy-facade</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.homo</groupId>
+                <artifactId>homo-common-proxy</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.homo</groupId>
+                <artifactId>homo-game-proxy-facade</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.homo</groupId>
+                <artifactId>homo-game-proxy</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.alibaba.csp</groupId>
+                <artifactId>sentinel-core</artifactId>
+                <version>${sentinel.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.alibaba.csp</groupId>
+                <artifactId>sentinel-datasource-apollo</artifactId>
+                <version>${sentinel.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

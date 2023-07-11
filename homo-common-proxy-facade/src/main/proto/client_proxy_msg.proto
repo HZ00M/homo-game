@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.homo.proto.client";
+option java_outer_classname = "ClientProxy";
+
+package msg;
+
+message ClientRouterMsg {
+  string appId =1;
+  string srcService = 2;
+  string token = 3;
+  string userId = 4;
+  string channelId = 5;
+  string msgId = 6;
+  string sign = 7;
+  repeated bytes msgContent = 8;
+}
+message PbResponseMsg{
+  int32 code         = 1;   //转发消息的结果，1代表成功，其他表示失败
+  string msg          = 2;   //失败原因，code不等于1时msg字段的值有意义
+  string msgId        = 3;   //消息id
+  bytes msgContent   = 4;   //业务返回的结构
+}
+
+//message ClientAuthMsg {
+//    string token        = 1;
+//    string userid         = 2;
+//}
+//
+//message ParameterMsg {
+//    string userId   = 1;
+//    string channelId     = 2;
+//}
+//
+//message ToClientReq {
+//    string clientid    = 1;
+//    string msgType     = 2;
+//    bytes msgContent   = 3;
+//}
+//
+//message RouterMsgReq {
+//    string serviceName   = 1;
+//    string msgId         = 2;
+//    string msgType       = 3;
+//    bytes msgContent     = 4;
+//}
+//
+//
+//message LoginMsgReq {
+//    string token          = 1;
+//    string userId         = 2;
+//    string channelId      = 3;
+//}
+//
+//message LoginMsgResp {
+//    string errorMsg     = 1;
+//}
+//
+////有状态proxy错误码
+//message ProxyErrorMsg {
+//    enum ErrorType //枚举消息类型
+//        {
+//            OK = 0;
+//            ERROR = 1;
+//            USER_NOT_FOUND = 2;
+//            PODID_IS_NULL = 3;
+//        }
+//    int32 errorCode = 1;
+//    string info = 2;
+//}
