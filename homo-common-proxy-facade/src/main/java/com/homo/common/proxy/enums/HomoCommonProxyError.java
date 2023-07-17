@@ -8,7 +8,7 @@ public enum HomoCommonProxyError implements HomoThrowable {
     flow_limit_error(301, "flow limit %s"),
     common_system_error(302, "common_system_error "),
     token_error(303, "token error %s"),
-    no_forward_url(304, "can not find forwardKey %s url"),
+    no_forward_url(304, "can not find forwardKey %s url,check config homo.common.httpForward.url.map"),
     param_miss(305, "param miss %s"),
     sign_error(306, "sign error "),
     ;

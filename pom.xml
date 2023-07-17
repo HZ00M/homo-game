@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.homo</groupId>
         <artifactId>homo-core</artifactId>
-        <version>1.1</version>
+        <version>1.0.0.0</version>
     </parent>
 
     <artifactId>homo-game</artifactId>
@@ -14,7 +14,7 @@
     <version>${revision}</version>
 
     <properties>
-<!--        <homo.core.version>1.0</homo.core.version>-->
+        <!--        <homo.core.version>1.0</homo.core.version>-->
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <sentinel.version>1.8.3</sentinel.version>
@@ -29,14 +29,16 @@
         <module>homo-common-proxy-facade</module>
         <module>homo-game-proxy</module>
         <module>homo-game-proxy-facade</module>
+        <module>homo-game-test</module>
+        <module>homo-game-test/homo-game-test-http-client</module>
     </modules>
 
     <dependencies>
-<!--        <dependency>-->
-<!--            <groupId>com.homo</groupId>-->
-<!--            <artifactId>homo-core</artifactId>-->
-<!--            <version>${homo.core.version}</version>-->
-<!--        </dependency>-->
+        <!--        <dependency>-->
+        <!--            <groupId>com.homo</groupId>-->
+        <!--            <artifactId>homo-core</artifactId>-->
+        <!--            <version>${homo.core.version}</version>-->
+        <!--        </dependency>-->
     </dependencies>
 
     <dependencyManagement>
@@ -69,6 +71,11 @@
             <dependency>
                 <groupId>com.homo</groupId>
                 <artifactId>homo-common-proxy</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.homo</groupId>
+                <artifactId>homo-game-test</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>

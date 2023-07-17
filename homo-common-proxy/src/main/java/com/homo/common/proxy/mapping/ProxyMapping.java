@@ -5,7 +5,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.homo.common.proxy.config.ProxyKey;
+import com.homo.common.proxy.enums.ProxyKey;
 import com.homo.common.proxy.dto.HeaderParam;
 import com.homo.common.proxy.dto.ProxyParam;
 import com.homo.core.rpc.http.HttpServer;
@@ -36,6 +36,7 @@ import java.util.Map;
 public class ProxyMapping extends AbstractHttpMapping {
     /**
      * http请求映射   请求为header+body,转换成json字符串 list{headerJson{},requestJson{method,url,msg[form-data|body]}}
+     *
      * @param exchange
      * @return
      */
@@ -43,8 +44,10 @@ public class ProxyMapping extends AbstractHttpMapping {
     public Mono<Void> httpForward(ServerWebExchange exchange) {
         return callHttpForward("httpForward", exchange);
     }
+
     /**
      * http映射   请求为header+body,转换成json字符串 list{headerJson{},requestJson{method,url,msg[form-data|body]}}
+     *
      * @param exchange
      * @return
      */
@@ -55,22 +58,24 @@ public class ProxyMapping extends AbstractHttpMapping {
 
     /**
      * 客户端json请求映射   请求为header(框架参数X-HOMO-XXX)+body(ProxyParam),转换成json字符串 list{HeaderParam,ProxyParam}
+     *
      * @param exchange
      * @return
      */
-    @RequestMapping(value = {"/clientJsonMsgCheckToken","/clientJsonMsgCheckSign"},consumes = "application/json")
-    public Mono<Void> clientJsonMsg(ServerWebExchange exchange){
+    @RequestMapping(value = {"/clientJsonMsgCheckToken", "/clientJsonMsgCheckSign"}, consumes = "application/json")
+    public Mono<Void> clientGrpcJsonMsg(ServerWebExchange exchange) {
         String msgId = exchange.getRequest().getURI().getPath().split("/")[1];
         return callJsonForward(msgId, exchange);
     }
 
     /**
      * 客户端pb请求映射   请求为header(框架参数X-HOMO-XXX)+body(Req),转换成ClientRouterMsg
+     *
      * @param exchange
      * @return
      */
-    @RequestMapping(value = {"/clientPbMsgCheckToken","/clientPbMsgCheckSign"},consumes = "application/x-protobuf")
-    public Mono<Void> clientProtoMsg(ServerWebExchange exchange){
+    @RequestMapping(value = {"/clientPbMsgCheckToken", "/clientPbMsgCheckSign"}, consumes = "application/x-protobuf")
+    public Mono<Void> clientGrpcProtoMsg(ServerWebExchange exchange) {
         String msgId = exchange.getRequest().getURI().getPath().split("/")[1];
         return callPbForward(msgId, exchange);
     }
@@ -140,15 +145,16 @@ public class ProxyMapping extends AbstractHttpMapping {
                 byte[] bytes = new byte[dataBuffer.readableByteCount()];
                 dataBuffer.read(bytes);
                 DataBufferUtils.release(dataBuffer);
-                String msg = buildPbMsg(request.getHeaders(), bytes);
-                return forwardProxy(msgId, msg, port, response);
+                byte[][] msg = buildPbMsg(request.getHeaders(), bytes);
+
+                return routerProxy(msgId, msg, port, response);
             } catch (Exception e) {
                 return Mono.error(e);
             }
         });
     }
 
-    public static String buildPbMsg(HttpHeaders headers, byte[] proxyParam) throws InvalidProtocolBufferException {
+    public static byte[][] buildPbMsg(HttpHeaders headers, byte[] proxyParam) throws InvalidProtocolBufferException {
         String appId = headers.getFirst(ProxyKey.X_HOMO_APP_ID);
         String token = headers.getFirst(ProxyKey.X_HOMO_TOKEN);
         String userId = headers.getFirst(ProxyKey.X_HOMO_USER_ID);
@@ -168,10 +174,13 @@ public class ProxyMapping extends AbstractHttpMapping {
             clientRouterBuilder.addMsgContent(bytes);
         }
         ClientRouterMsg clientRouterMsg = clientRouterBuilder.build();
-        return clientRouterMsg.toString();
+        byte[][] msg = new byte[1][];
+        msg[0] = clientRouterMsg.toByteArray();
+        return msg;
     }
 
-    public static String buildJsonMsg(HttpHeaders headers, String proxyParamString){
+    public static String buildJsonMsg(HttpHeaders headers, String proxyParamString) {
+        //参数格式 (reqJson,headerJson)
         String appId = headers.getFirst(ProxyKey.X_HOMO_APP_ID);
         String token = headers.getFirst(ProxyKey.X_HOMO_TOKEN);
         String userId = headers.getFirst(ProxyKey.X_HOMO_USER_ID);
@@ -187,21 +196,16 @@ public class ProxyMapping extends AbstractHttpMapping {
                 .body(proxyParamString)
                 .build();
         List<Object> list = new ArrayList<>();
-        list.add(headerParam);
         list.add(proxyParam);
+        list.add(headerParam);
         return JSON.toJSONString(list);
     }
 
     public static String buildStringMsg(ServerHttpRequest request, String msg) {
-        HttpHeaders headers = request.getHeaders();
+        //参数格式(msgJson,headerJson)
         HttpMethod method = request.getMethod();
         MultiValueMap<String, String> queryParams = request.getQueryParams();
         List<JSONObject> list = new ArrayList<>();
-        JSONObject headerJson = new JSONObject();
-        for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
-            headerJson.put(entry.getKey(), entry.getValue().get(0));
-        }
-        list.add(headerJson);
         JSONObject methodAndUrlJson = new JSONObject();
         methodAndUrlJson.put(ProxyKey.METHOD_KEY, method.toString());
         methodAndUrlJson.put(ProxyKey.URL_KEY, request.getURI().getPath());
@@ -212,21 +216,45 @@ public class ProxyMapping extends AbstractHttpMapping {
             methodAndUrlJson.put(ProxyKey.MSG_KEY, queryParamsJson);
         }
         list.add(methodAndUrlJson);
+        JSONObject headerJson = new JSONObject();
+        HttpHeaders headers = request.getHeaders();
+        for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
+            headerJson.put(entry.getKey(), entry.getValue().get(0));
+        }
+        list.add(headerJson);
         return JSON.toJSONString(list);
     }
 
     private Mono<Void> forwardProxy(String msgId, String msg, int port, ServerHttpResponse response) {
         HttpServer httpServer = routerHttpServerMap.get(port);
-        byte[][] bytes = new byte[1][];
-        bytes[0] = msg.getBytes();
         Span span = ZipkinUtil.currentSpan();
         return response.writeAndFlushWith(Mono.create(sink -> {
-            httpServer.onCall(msgId, bytes, response)
+            httpServer.onCall(msgId, msg, response)
                     .subscribe(ret -> {
                         span.tag("doHttpForward", "success");
                         sink.success(Mono.just(ret));
                     }, throwable -> {
                         span.error(throwable).tag("doHttpForward", "error");
+                        sink.error(throwable);
+                    }, () -> {
+                        span.tag("doHttpForward Complete", "complete");
+                    });
+        }));
+    }
+
+    private Mono<Void> routerProxy(String msgId, byte[][] msg, int port, ServerHttpResponse response) {
+        HttpServer httpServer = routerHttpServerMap.get(port);
+        Span span = ZipkinUtil.currentSpan();
+        log.info("routerProxy start msgId {} port {} ", msgId, port);
+        return response.writeAndFlushWith(Mono.create(sink -> {
+            httpServer.onCall(msgId, msg, response)
+                    .subscribe(ret -> {
+                        span.tag("doHttpForward", "success");
+                        log.info("routerProxy success msgId {} port {} ret {}", msgId, port, ret);
+                        sink.success(Mono.just(ret));
+                    }, throwable -> {
+                        span.error(throwable).tag("doHttpForward", "error");
+                        log.info("routerProxy error msgId {} port {} throwable {}", msgId, port, throwable);
                         sink.error(throwable);
                     }, () -> {
                         span.tag("doHttpForward Complete", "complete");

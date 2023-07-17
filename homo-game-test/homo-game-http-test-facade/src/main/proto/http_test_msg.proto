@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.homo.proto.client";
+option java_outer_classname = "HttpTestProto";
+
+package msg;
+
+message HttpTestReq {
+  string appId =1;
+  string srcService = 2;
+  string token = 3;
+  string userId = 4;
+  string channelId = 5;
+  string msgId = 6;
+  string sign = 7;
+  repeated bytes msgContent = 8;
+}
+message HttpTestRsp{
+  int32 code         = 1;   //转发消息的结果，1代表成功，其他表示失败
+  string msg          = 2;   //失败原因，code不等于1时msg字段的值有意义
+  string msgId        = 3;   //消息id
+  bytes msgContent   = 4;   //业务返回的结构
+}
+
