@@ -69,7 +69,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
 
     @Override
     public void init() {
-        ReadableDataSource<String, List<FlowRule>> flowRuleDataSource = new ApolloDataSource<>(commonProxyProperties.getDatasourceNamespace(), commonProxyProperties.getFlowRuleKey(),
+        ReadableDataSource<String, List<FlowRule>> flowRuleDataSource = new ApolloDataSource<>(commonProxyProperties.getDatasourceNamespace(), "flowRules",
                 "[]", new Converter<String, List<FlowRule>>() {
             @Override
             public List<FlowRule> convert(String source) {
@@ -180,7 +180,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
             log.info("httpCall start host {} url {} method {} msg {} headersJson {} requestJson {}", host, url, method, msg, headersJson, requestJson);
             String responseTimeStr = headersJson.getString(ProxyKey.X_HOMO_RESPONSE_TIME);
             long responseTime = responseTimeStr == null ? 10000 : Long.parseLong(responseTimeStr);
-            headersJson.remove("host");
+            headersJson.remove("Host");
             Span span = ZipkinUtil.getTracing()
                     .tracer()
                     .currentSpan();

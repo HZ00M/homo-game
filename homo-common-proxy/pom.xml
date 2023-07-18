@@ -23,6 +23,11 @@
             <artifactId>homo-common-proxy-facade</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-sentinel</artifactId>
+            <version>2021.0.4.0</version>
+        </dependency>
+        <dependency>
             <groupId>com.homo</groupId>
             <artifactId>homo-core-system</artifactId>
         </dependency>

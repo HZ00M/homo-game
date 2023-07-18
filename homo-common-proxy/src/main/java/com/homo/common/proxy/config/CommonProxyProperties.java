@@ -16,8 +16,8 @@ public class CommonProxyProperties {
     @Value("${homo.sentinel.datasource.namespace:homo_common_proxy}")
     private String datasourceNamespace;
 
-    @Value("${homo.sentinel.datasource.flowRuleKey:flowRules}")
-    private String flowRuleKey ;
+//    @Value("${homo.sentinel.datasource.flowRuleKey:flowRules}")
+//    private String flowRuleKey ;
 
     @Value("${homo.common.httpForward.flow.control.keys:{}}")
     private Set<String> flowControlKeys;

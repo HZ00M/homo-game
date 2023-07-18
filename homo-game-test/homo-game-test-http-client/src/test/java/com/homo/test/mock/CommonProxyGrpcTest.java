@@ -4,6 +4,9 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.homo.common.proxy.enums.ProxyKey;
+import com.homo.core.facade.rpc.RpcType;
+import com.homo.core.facade.service.ServiceExport;
+import com.homo.core.utils.rector.Homo;
 import io.homo.proto.client.HttpTestReq;
 import io.homo.proto.client.HttpTestRsp;
 import io.homo.proto.client.PbResponseMsg;
@@ -41,23 +44,12 @@ public class CommonProxyGrpcTest {
     }
 
     /**
-     * @ServiceExport(tagName = "http-test-service:33333", isStateful = false, driverType = RpcType.http, isMainServer = true)
-     * public interface IHttpTestService {
-     * Homo<String> jsonGetTest1(JSONObject params, JSONObject header);
-     * <p>
-     * Homo<String> jsonGetTest2(String params, JSONObject header);
-     * <p>
-     * Homo<String> jsonGetTest3(String params, Integer intParam, JSONObject header);
-     * <p>
-     * Homo<String> jsonPostTest1(JSONObject params, JSONObject header);
-     * <p>
-     * Homo<String> jsonPostTest2(String params, JSONObject header);
-     * <p>
-     * Homo<String> jsonPostTest3(String params, Integer intParam, JSONObject header);
-     * <p>
-     * Homo<String> jsonPostTest4(JSONObject param1, JSONObject param2,JSONObject header);
-     * <p>
-     * Homo<HttpTestRsp> protoPostTest(HttpTestReq req, HttpHeadInfo header);
+     * @ServiceExport(tagName = "rpc-test-service:33334", isStateful = false, driverType = RpcType.grpc, isMainServer = false)
+     * public interface IRpcTestService {
+     *
+     *     Homo<String> jsonPostTest1(JSONObject params, JSONObject header);
+     *
+     *     Homo<HttpTestRsp> protoPostTest1(HttpTestReq req);
      * }
      */
     public static String COMMON_PROXY_URL = "http://common-http-proxy:33306/";
