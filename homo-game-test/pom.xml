@@ -20,6 +20,8 @@
         <module>homo-game-http-test-facade</module>
         <module>homo-game-http-test</module>
         <module>homo-game-test-http-client</module>
+        <module>homo-game-entity-test-facade</module>
+        <module>homo-game-entity-test</module>
     </modules>
     <build>
         <plugins>
@@ -81,6 +83,16 @@
             <dependency>
                 <groupId>com.homo</groupId>
                 <artifactId>homo-game-http-test-facade</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.homo</groupId>
+                <artifactId>homo-game-entity-test</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.homo</groupId>
+                <artifactId>homo-game-entity-test-facade</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>

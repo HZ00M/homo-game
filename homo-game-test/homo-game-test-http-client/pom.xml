@@ -30,6 +30,10 @@
             <groupId>com.homo</groupId>
             <artifactId>homo-game-http-test-facade</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.homo</groupId>
+            <artifactId>homo-game-entity-test-facade</artifactId>
+        </dependency>
         <!-- Spring Boot Test 依赖 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

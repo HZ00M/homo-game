@@ -30,7 +30,7 @@
         <module>homo-game-proxy</module>
         <module>homo-game-proxy-facade</module>
         <module>homo-game-test</module>
-        <module>homo-game-test/homo-game-test-http-client</module>
+        <module>homo-game-common-util</module>
     </modules>
 
     <dependencies>
@@ -66,6 +66,11 @@
             <dependency>
                 <groupId>com.homo</groupId>
                 <artifactId>homo-common-proxy-facade</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.homo</groupId>
+                <artifactId>homo-game-common-util</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>

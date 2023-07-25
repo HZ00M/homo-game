@@ -1,15 +1,10 @@
 package com.homo.test.mock;
 
-import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.homo.common.proxy.enums.ProxyKey;
-import com.homo.core.facade.rpc.RpcType;
-import com.homo.core.facade.service.ServiceExport;
-import com.homo.core.utils.rector.Homo;
+import com.homo.game.proxy.enums.ProxyKey;
 import io.homo.proto.client.HttpTestReq;
-import io.homo.proto.client.HttpTestRsp;
-import io.homo.proto.client.PbResponseMsg;
+import io.homo.proto.client.Msg;
 import io.homo.proto.rpc.Req;
 import lombok.extern.log4j.Log4j2;
 import org.junit.jupiter.api.MethodOrderer;
@@ -119,7 +114,7 @@ public class CommonProxyGrpcTest {
     public void clientPbMsgCheckToken() throws InterruptedException, InvalidProtocolBufferException {
         HttpTestReq httpTestReq = HttpTestReq.newBuilder().setSign("sign").setChannelId("channelId").build();
         Req req = Req.newBuilder().setSrcService("rpc-test-service").setMsgId("protoPostTest1").addMsgContent(httpTestReq.toByteString()).build();
-        PbResponseMsg responseBody = webTestClient.post()
+        Msg responseBody = webTestClient.post()
                 .uri(COMMON_PROXY_URL + "clientPbMsgCheckToken")
                 .headers(httpHeaders -> {
                     for (Map.Entry<String, String> entry : frameHeader.entrySet()) {
@@ -129,7 +124,7 @@ public class CommonProxyGrpcTest {
                 })
                 .body(BodyInserters.fromValue(req.toByteArray()))
                 .exchange()
-                .expectBody(PbResponseMsg.class)
+                .expectBody(Msg.class)
                 .returnResult()
                 .getResponseBody();
         log.info("clientPbMsgCheckToken responseBody {} ", responseBody);
@@ -140,7 +135,7 @@ public class CommonProxyGrpcTest {
         HttpTestReq httpTestReq = HttpTestReq.newBuilder().setSign("sign").setChannelId("channelId").build();
         Req req = Req.newBuilder().setSrcService("rpc-test-service").setMsgId("protoPostTest1").addMsgContent(httpTestReq.toByteString()).build();
         String clientSign = clientSign("1", "protoPostTest1", req.toByteArray());
-        PbResponseMsg responseBody = webTestClient.post()
+        Msg responseBody = webTestClient.post()
                 .uri(COMMON_PROXY_URL + "clientPbMsgCheckSign")
                 .headers(httpHeaders -> {
                     for (Map.Entry<String, String> entry : frameHeader.entrySet()) {
@@ -151,7 +146,7 @@ public class CommonProxyGrpcTest {
                 })
                 .body(BodyInserters.fromValue(req.toByteArray()))
                 .exchange()
-                .expectBody(PbResponseMsg.class)
+                .expectBody(Msg.class)
                 .returnResult()
                 .getResponseBody();
         log.info("clientPbMsgCheckSign responseBody {} ", responseBody);

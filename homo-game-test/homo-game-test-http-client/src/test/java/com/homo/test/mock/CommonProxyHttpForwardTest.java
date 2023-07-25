@@ -2,7 +2,7 @@ package com.homo.test.mock;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.homo.common.proxy.enums.ProxyKey;
+import com.homo.game.proxy.enums.ProxyKey;
 import io.homo.proto.client.HttpTestReq;
 import lombok.extern.log4j.Log4j2;
 import org.junit.jupiter.api.MethodOrderer;
@@ -52,7 +52,7 @@ public class CommonProxyHttpForwardTest {
      * <p>
      * Homo<String> jsonPostTest4(JSONObject param1, JSONObject param2,JSONObject header);
      * <p>
-     * Homo<HttpTestRsp> protoPostTest(HttpTestReq req, HttpHeadInfo header);
+     * Homo<HttpTestRsp> protoPostTest(HttpTestReq req, ClientRouterHeader header);
      * }
      */
     public static String COMMON_PROXY_URL = "http://common-http-proxy:33306/httpForward/";
