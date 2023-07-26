@@ -1,16 +1,14 @@
 package com.homo.game.proxy.handler;
 
 import com.google.protobuf.ByteString;
+import com.homo.core.utils.serial.FSTSerializationProcessor;
 import com.homo.game.proxy.enums.HomoCommonError;
 import com.homo.core.facade.rpc.RpcAgentClient;
 import com.homo.core.facade.service.ServiceStateMgr;
 import com.homo.core.rpc.base.serial.ByteRpcContent;
 import com.homo.core.rpc.base.utils.ServiceUtil;
 import com.homo.core.rpc.client.RpcClientMgr;
-import com.homo.core.utils.exception.HomoError;
-import com.homo.core.utils.exception.HomoException;
 import com.homo.core.utils.rector.Homo;
-import com.homo.core.utils.serial.HomoSerializationProcessor;
 import io.homo.proto.client.ClientRouterHeader;
 import io.homo.proto.client.ClientRouterMsg;
 import io.homo.proto.client.Msg;
@@ -31,8 +29,7 @@ public class EntityRouterHandler implements ProxyHandler {
     ServiceStateMgr serviceStateMgr;
     @Autowired
     RpcClientMgr rpcClientMgr;
-    @Autowired
-    HomoSerializationProcessor homoSerializationProcessor;
+    private FSTSerializationProcessor serializationProcessor = new FSTSerializationProcessor();
     @Override
     public Integer order() {
         return 9;
@@ -55,34 +52,36 @@ public class EntityRouterHandler implements ProxyHandler {
                             return Homo.resultVoid();
                         } else {
                             return serviceStateMgr.getLinkedPod(userId, srcService)
-                                    .nextDo(pod -> {
-                                        if (pod != null) {
-                                            String statefulName = ServiceUtil.formatStatefulName(serverInfo.getServiceTag(), pod);
-                                            RpcAgentClient agentClient = rpcClientMgr.getGrpcAgentClient(statefulName, true);
-                                            ParameterMsg parameterMsg = context.getParam(FillParamMsgHandler.PARAMETER_MSG, ParameterMsg.class);
-
-                                            byte[][] data = new byte[msgContentList.size() + 2][];
-                                            data[0] = homoSerializationProcessor.writeByte(pod);
-                                            data[1] = parameterMsg.toByteArray();
-                                            for (ByteString bytes : msgContentList) {
-                                                data[msgContentList.indexOf(bytes) + 2] = bytes.toByteArray();
-                                            }
-                                            ByteRpcContent rpcContent = ByteRpcContent.builder().data(data).build();
-                                            return agentClient.rpcCall(msgId, rpcContent)
-                                                    .nextDo(ret->{
-                                                        Tuple2<String,ByteRpcContent> contentTuple2 = (Tuple2<String, ByteRpcContent>) ret;
-                                                        String retMsgId = contentTuple2.getT1();
-                                                        ByteRpcContent content = contentTuple2.getT2();
-                                                        byte[][] retData = content.getData();
-                                                        Msg msg = Msg.newBuilder().setMsgId(retMsgId).setMsgContent(ByteString.copyFrom(retData[0])).build();
-                                                        context.success(msg);
-                                                        return Homo.resultVoid();
-                                                    });
+                                    .nextDo(podIdx->{
+                                        if (podIdx == -1){
+                                            return serviceStateMgr.choiceBestPod(srcService);
                                         }else {
-                                            HomoException exception = HomoError.throwError(HomoCommonError.entity_pod_not_found.getCode(),userId);
-                                            context.error(exception);
-                                            return Homo.resultVoid();
+                                            return Homo.result(podIdx);
                                         }
+
+                                    })
+                                    .nextDo(choicePodId->{
+                                        String statefulName = ServiceUtil.formatStatefulName(serverInfo.getServiceTag(), choicePodId);
+                                        RpcAgentClient agentClient = rpcClientMgr.getGrpcAgentClient(statefulName, true);
+                                        ParameterMsg parameterMsg = context.getParam(CheckParamMsgHandler.PARAMETER_MSG, ParameterMsg.class);
+
+                                        byte[][] data = new byte[msgContentList.size() + 2][];
+                                        data[0] = serializationProcessor.writeByte(choicePodId);
+                                        data[1] = parameterMsg.toByteArray();
+                                        for (ByteString bytes : msgContentList) {
+                                            data[msgContentList.indexOf(bytes) + 2] = bytes.toByteArray();
+                                        }
+                                        ByteRpcContent rpcContent = ByteRpcContent.builder().data(data).build();
+                                        return agentClient.rpcCall(msgId, rpcContent)
+                                                .nextDo(ret->{
+                                                    Tuple2<String,ByteRpcContent> contentTuple2 = (Tuple2<String, ByteRpcContent>) ret;
+                                                    String retMsgId = contentTuple2.getT1();
+                                                    ByteRpcContent content = contentTuple2.getT2();
+                                                    byte[][] retData = content.getData();
+                                                    Msg msg = Msg.newBuilder().setMsgId(retMsgId).setMsgContent(ByteString.copyFrom(retData[0])).build();
+                                                    context.success(msg);
+                                                    return Homo.resultVoid();
+                                                });
                                     });
                         }
                     });

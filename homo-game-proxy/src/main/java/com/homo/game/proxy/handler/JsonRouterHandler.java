@@ -1,7 +1,5 @@
 package com.homo.game.proxy.handler;
 
-import com.homo.game.proxy.handler.HandlerContext;
-import com.homo.game.proxy.handler.ProxyHandler;
 import com.homo.core.facade.rpc.RpcAgentClient;
 import com.homo.core.facade.service.ServiceStateMgr;
 import com.homo.core.rpc.base.serial.JsonRpcContent;
@@ -24,10 +22,10 @@ public class JsonRouterHandler implements ProxyHandler {
     RpcClientMgr rpcClientMgr;
     @Autowired
     HomoSerializationProcessor homoSerializationProcessor;
-
+    public static String JSON_PARAM_KEY = "jsonParam";
     @Override
     public Homo<Void> handler(HandlerContext context) {
-        ClientJsonRouterMsg routerMsg = context.getParam("jsonParam", ClientJsonRouterMsg.class);
+        ClientJsonRouterMsg routerMsg = context.getParam(JSON_PARAM_KEY, ClientJsonRouterMsg.class);
         String serviceName = routerMsg.getServiceName();
         String msgId = routerMsg.getMsgId();
         String msgContent = routerMsg.getMsgContent();

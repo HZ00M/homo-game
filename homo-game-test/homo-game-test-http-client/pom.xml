@@ -28,6 +28,10 @@
         </dependency>
         <dependency>
             <groupId>com.homo</groupId>
+            <artifactId>homo-game-proxy-facade</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.homo</groupId>
             <artifactId>homo-game-http-test-facade</artifactId>
         </dependency>
         <dependency>

@@ -14,6 +14,7 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
 import com.google.protobuf.ByteString;
+import com.homo.core.rpc.http.dto.ResponseMsg;
 import com.homo.game.proxy.config.CommonProxyProperties;
 import com.homo.game.proxy.dto.HeaderParam;
 import com.homo.game.proxy.dto.ProxyParam;
@@ -29,7 +30,7 @@ import com.homo.core.rpc.base.serial.ByteRpcContent;
 import com.homo.core.rpc.base.serial.JsonRpcContent;
 import com.homo.core.rpc.base.service.BaseService;
 import com.homo.core.rpc.client.RpcClientMgr;
-import com.homo.core.rpc.http.dto.ResponseMsg;
+
 import com.homo.core.utils.rector.Homo;
 import com.homo.core.utils.trace.ZipkinUtil;
 import io.homo.proto.client.ClientRouterMsg;
@@ -87,7 +88,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
             String forwardKey = routes[2];
             if (ProxyCheckParamUtils.checkIsNullOrEmpty(method, url, msg, forwardKey)) {
                 log.error("clientJsonMsgCheckToken checkIsNullOrEmpty error headerJson {} requestJson {}", headerJson, requestJson);
-                ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.param_miss.getCode()).msg(HomoCommonError.param_miss.message()).build();
+                ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.param_miss.getCode()).codeDesc(HomoCommonError.param_miss.message()).build();
                 return Homo.result(JSON.toJSONString(responseMsg));
             }
             if (commonProxyProperties.getFlowControlKeys().contains(forwardKey)) {
@@ -106,7 +107,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                 if (ProxyCheckParamUtils.checkIsNullOrEmpty(appId, token, userId, channelId)) {
                     log.error("clientJsonMsgCheckToken checkIsNullOrEmpty error appId {} token {} userId {} channelId {}",
                             appId, token, userId, channelId);
-                    ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.param_miss.getCode()).msg(HomoCommonError.param_miss.message()).build();
+                    ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.param_miss.getCode()).codeDesc(HomoCommonError.param_miss.message()).build();
                     return Homo.result(JSON.toJSONString(responseMsg));
                 }
                 canForwardPromise = tokenHandler.checkToken(appId, channelId, userId, token);
@@ -115,7 +116,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                     .nextDo(pass -> {
                         if (!pass) {
                             log.error("check token error headersJson_{} requestJson_{}", headerJson, requestJson);
-                            ResponseMsg response = ResponseMsg.builder().code(HomoCommonError.token_error.getCode()).msg(HomoCommonError.token_error.message()).build();
+                            ResponseMsg response = ResponseMsg.builder().code(HomoCommonError.token_error.getCode()).codeDesc(HomoCommonError.token_error.message()).build();
 //                            JSONObject responseHeader = new JSONObject();
 //                            responseHeader.put(ProxyKey.X_HOMO_RESPONSE, "check token error");
 //                            HttpParam httpParam = HttpParam.builder().headers(responseHeader.toJSONString()).code(HttpStatus.OK.value()).result(JSON.toJSONString(response)).build();
@@ -124,7 +125,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                         String forwardUrl = commonProxyProperties.getForwardUrlMap().get(forwardKey);
                         if (forwardUrl == null) {
                             log.error("forwardUrl == null requestJson_{}", requestJson);
-                            ResponseMsg response = ResponseMsg.builder().code(HomoCommonError.no_forward_url.getCode()).msg(HomoCommonError.no_forward_url.msgFormat(forwardKey)).build();
+                            ResponseMsg response = ResponseMsg.builder().code(HomoCommonError.no_forward_url.getCode()).codeDesc(HomoCommonError.no_forward_url.msgFormat(forwardKey)).build();
 //                            HttpParam httpParam = HttpParam.builder().code(HttpStatus.OK.value()).result(JSON.toJSONString(response)).build();
                             return Homo.result(JSONObject.toJSONString(response));
                         }
@@ -155,14 +156,14 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
             log.error("httpForward over limit count headerJson {} requestJson {}", headerJson, requestJson);
             ResponseMsg responseMsg = ResponseMsg.builder()
                     .code(HomoCommonError.flow_limit_error.getCode())
-                    .msg(HomoCommonError.flow_limit_error.msgFormat(e.getMessage()))
+                    .codeDesc(HomoCommonError.flow_limit_error.msgFormat(e.getMessage()))
                     .build();
             return Homo.result(JSONObject.toJSONString(responseMsg));
         } catch (Exception e) {
             log.error("httpForward system error {} {}", headerJson, requestJson, e);
             ResponseMsg responseMsg = ResponseMsg.builder()
                     .code(HomoCommonError.common_system_error.getCode())
-                    .msg(HomoCommonError.common_system_error.msgFormat(e.getMessage()))
+                    .codeDesc(HomoCommonError.common_system_error.msgFormat(e.getMessage()))
                     .build();
             return Homo.result(JSONObject.toJSONString(responseMsg));
         }
@@ -200,7 +201,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                                     .subscribe(resp -> {
                                         ResponseMsg responseMsg = ResponseMsg.builder()
                                                 .code(code)
-                                                .msg(respHeader.toJSONString())
+                                                .codeDesc(respHeader.toJSONString())
                                                 .msgContent(resp)
                                                 .build();
                                         sink.success(responseMsg);
@@ -244,7 +245,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
         String channelId = headerParam.getChannelId();
         if (ProxyCheckParamUtils.checkIsNullOrEmpty(srcService, msgId, msgContent, userId, token, appId, channelId)) {
             log.error("clientJsonMsgCheckToken checkIsNullOrEmpty error headerParam {} proxyParam {}", headerParam, proxyParam);
-            ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.param_miss.getCode()).msg(HomoCommonError.param_miss.message()).build();
+            ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.param_miss.getCode()).codeDesc(HomoCommonError.param_miss.message()).build();
             return Homo.result(JSON.toJSONString(responseMsg));
         }
 
@@ -252,7 +253,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                 .nextDo(checkPass -> {
                     if (!checkPass) {
                         log.error("clientJsonMsgCheckToken checkPass error headerParam {} proxyParam {}", headerParam, proxyParam);
-                        ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.token_error.getCode()).msg(HomoCommonError.token_error.message()).build();
+                        ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.token_error.getCode()).codeDesc(HomoCommonError.token_error.message()).build();
                         return Homo.result(JSON.toJSONString(responseMsg));
                     }
                     JSONArray paramArray = new JSONArray();
@@ -270,7 +271,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                                 log.info("proxyCall serviceName {} msgId {} rpcContent {} jsonRet {}", serviceName, msgId, rpcContent, ret);
                                 ResponseMsg responseMsg = ResponseMsg.builder()
                                         .code(HomoCommonError.success.getCode())
-                                        .msg(HomoCommonError.success.message())
+                                        .codeDesc(HomoCommonError.success.message())
                                         .msgId(msgId)
                                         .msgContent(retData)
                                         .build();
@@ -280,7 +281,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                 })
                 .errorContinue(throwable -> {
                     log.error("clientJsonMsgCheckToken system error headerParam {} proxyParam {} e", headerParam, proxyParam, throwable);
-                    ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.common_system_error.getCode()).msg(HomoCommonError.common_system_error.message()).build();
+                    ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.common_system_error.getCode()).codeDesc(HomoCommonError.common_system_error.message()).build();
                     return Homo.result(JSON.toJSONString(responseMsg));
                 });
     }
@@ -346,14 +347,14 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
         String body = headerParam.getBody();
         if (ProxyCheckParamUtils.checkIsNullOrEmpty(srcService, msgId, msgContent, userId, token, appId, channelId)) {
             log.error("clientJsonMsgCheckToken is error headerParam {} proxyParam {}", headerParam, proxyParam);
-            ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.param_miss.getCode()).msg(HomoCommonError.param_miss.message()).build();
+            ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.param_miss.getCode()).codeDesc(HomoCommonError.param_miss.message()).build();
             return Homo.result(JSON.toJSONString(responseMsg));
         }
         try {
             Boolean checkSignPass = tokenHandler.checkSign(appId, msgId, body.getBytes(StandardCharsets.UTF_8), sign);
             if (!checkSignPass) {
                 log.error("clientJsonMsgCheckToken checkSignPass false headerParam {} proxyParam {}", headerParam, proxyParam);
-                ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.sign_error.getCode()).msg(HomoCommonError.sign_error.message()).build();
+                ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.sign_error.getCode()).codeDesc(HomoCommonError.sign_error.message()).build();
                 return Homo.result(JSON.toJSONString(responseMsg));
             }
             String serverPort = commonProxyProperties.getServerPortMap().get(srcService);
@@ -371,7 +372,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                         log.info("proxyCall serviceName {} msgId {} rpcContent {} jsonRet {}", serviceName, msgId, rpcContent, retData);
                         ResponseMsg responseMsg = ResponseMsg.builder()
                                 .code(HomoCommonError.success.getCode())
-                                .msg(HomoCommonError.success.message())
+                                .codeDesc(HomoCommonError.success.message())
                                 .msgId(msgId)
                                 .msgContent(retData)
                                 .build();
@@ -379,12 +380,12 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                     });
             return homo.errorContinue(throwable -> {
                 log.error("clientJsonMsgCheckToken rpcCall error headerParam {} proxyParam {} e", headerParam, proxyParam, throwable);
-                ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.common_system_error.getCode()).msg(HomoCommonError.common_system_error.message()).build();
+                ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.common_system_error.getCode()).codeDesc(HomoCommonError.common_system_error.message()).build();
                 return Homo.result(JSON.toJSONString(responseMsg));
             });
         } catch (Exception e) {
             log.error("clientJsonMsgCheckToken system error headerParam {} proxyParam {} e", headerParam, proxyParam, e);
-            ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.common_system_error.getCode()).msg(HomoCommonError.common_system_error.message()).build();
+            ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.common_system_error.getCode()).codeDesc(HomoCommonError.common_system_error.message()).build();
             return Homo.result(JSON.toJSONString(responseMsg));
         }
     }

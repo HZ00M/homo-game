@@ -7,7 +7,7 @@ import com.homo.core.rpc.base.serial.ByteRpcContent;
 import com.homo.core.rpc.base.utils.ServiceUtil;
 import com.homo.core.rpc.client.RpcClientMgr;
 import com.homo.core.utils.rector.Homo;
-import com.homo.core.utils.serial.HomoSerializationProcessor;
+import com.homo.core.utils.serial.FSTSerializationProcessor;
 import io.homo.proto.client.ClientRouterHeader;
 import io.homo.proto.client.ClientRouterMsg;
 import io.homo.proto.client.Msg;
@@ -31,8 +31,7 @@ public class RouterHandler implements ProxyHandler {
     ServiceStateMgr serviceStateMgr;
     @Autowired
     RpcClientMgr rpcClientMgr;
-    @Autowired
-    HomoSerializationProcessor homoSerializationProcessor;
+    private FSTSerializationProcessor serializationProcessor = new FSTSerializationProcessor();
 
     @Override
     public Homo<Void> handler(HandlerContext context) {
@@ -66,10 +65,10 @@ public class RouterHandler implements ProxyHandler {
                     }
                 })
                 .nextDo(client->{
-                    ParameterMsg parameterMsg = context.getParam(FillParamMsgHandler.PARAMETER_MSG, ParameterMsg.class);
+                    ParameterMsg parameterMsg = context.getParam(CheckParamMsgHandler.PARAMETER_MSG, ParameterMsg.class);
 
                     byte[][] data = new byte[msgContentList.size() + 2][];
-                    data[0] = homoSerializationProcessor.writeByte(-1);
+                    data[0] = serializationProcessor.writeByte(-1);
                     data[1] = parameterMsg.toByteArray();
                     for (ByteString bytes : msgContentList) {
                         data[msgContentList.indexOf(bytes) + 2] = bytes.toByteArray();

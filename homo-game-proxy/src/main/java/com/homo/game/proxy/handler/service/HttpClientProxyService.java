@@ -1,5 +1,6 @@
 package com.homo.game.proxy.handler.service;
 
+import com.homo.game.proxy.handler.JsonRouterHandler;
 import com.homo.game.proxy.handler.ProxyHandler;
 import com.homo.game.proxy.handler.HandlerManger;
 import com.homo.core.rpc.base.service.BaseService;
@@ -45,8 +46,8 @@ public class HttpClientProxyService extends BaseService implements IHttpClientPr
                 msgId, srcService, userId, token, adId, appVersion, resVersion);
 
         return Homo.warp(msgHomoSink -> {
-            handlerMgr.create(msgHomoSink, "authTokenHandler", "checkWhiteListHandler", "checkUserNumberHandler",
-                            "fillParamMsgHandler","entityRouterHandler","routerHandler")
+            handlerMgr.create(msgHomoSink, "checkParamMsgHandler", "checkWhiteListHandler", "checkUserNumberHandler",
+                            "authTokenHandler", "entityRouterHandler", "routerHandler")
                     .header(header)
                     .router(routerMsg)
                     .sort()
@@ -60,10 +61,10 @@ public class HttpClientProxyService extends BaseService implements IHttpClientPr
         String serviceName = routerMsg.getServiceName();
         Integer podIndex = routerMsg.getPodIndex();
         String msgId = routerMsg.getMsgId();
-        log.info("clientJsonMsgProxy serviceName {} podIndex {} msgId {}",serviceName,podIndex,msgId);
+        log.info("clientJsonMsgProxy serviceName {} podIndex {} msgId {}", serviceName, podIndex, msgId);
         return Homo.warp(msgHomoSink -> {
             handlerMgr.create(msgHomoSink, "jsonRouterHandler")
-                    .setParam("jsonParam",routerMsg)
+                    .setParam(JsonRouterHandler.JSON_PARAM_KEY, routerMsg)
                     .sort()
                     .process();
         });
