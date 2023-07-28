@@ -5,10 +5,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.homo.game.proxy.enums.ProxyKey;
 import io.homo.proto.client.HttpTestReq;
 import lombok.extern.log4j.Log4j2;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -57,16 +54,38 @@ public class CommonProxyHttpForwardTest {
      */
     public static String COMMON_PROXY_URL = "http://common-http-proxy:33306/httpForward/";
     public static HashMap<String, String> frameHeader;
-
+    public static String token = "token123";
+    public static String userId = "20001_123";
     static {
         frameHeader = new HashMap<>();
         frameHeader.put(ProxyKey.X_HOMO_APP_ID, "1");
-        frameHeader.put(ProxyKey.X_HOMO_TOKEN, "2");
+        frameHeader.put(ProxyKey.X_HOMO_TOKEN, token);
         frameHeader.put(ProxyKey.X_HOMO_SIGNATURE, "3");
-        frameHeader.put(ProxyKey.X_HOMO_USER_ID, "5");
+        frameHeader.put(ProxyKey.X_HOMO_USER_ID, userId);
         frameHeader.put(ProxyKey.X_HOMO_RESPONSE, "5");
         frameHeader.put(ProxyKey.X_HOMO_RESPONSE_TIME, "10000");
         frameHeader.put(ProxyKey.X_HOMO_CHANNEL_ID, "7");
+    }
+
+    @BeforeAll
+    public void login(){
+        JSONObject body = new JSONObject();
+        body.put("userId", userId);
+        String responseBody = webTestClient.post()
+                .uri(COMMON_PROXY_URL + "login-service-http/login")
+//                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .headers(httpHeaders -> {
+                    for (Map.Entry<String, String> entry : frameHeader.entrySet()) {
+                        httpHeaders.set(entry.getKey(), entry.getValue());
+                    }
+                })
+                .body(BodyInserters.fromValue(body.toJSONString()))
+                .exchange()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+        log.info("token responseBody {} ", JSONObject.parseObject(responseBody));
     }
 
     @Test
@@ -82,7 +101,7 @@ public class CommonProxyHttpForwardTest {
                 .expectBody(String.class)
                 .returnResult()
                 .getResponseBody();
-        log.info("jsonGetTest1 responseBody {} ", responseBody);
+        log.info("jsonGetTest1 responseBody {} ", JSONObject.parseObject(responseBody));
     }
 
     @Test
@@ -98,7 +117,7 @@ public class CommonProxyHttpForwardTest {
                 .expectBody(String.class)
                 .returnResult()
                 .getResponseBody();
-        log.info("jsonGetTest2 responseBody {} ", responseBody);
+        log.info("jsonGetTest2 responseBody {} ", JSONObject.parseObject(responseBody));
     }
 
     @Test
@@ -119,7 +138,7 @@ public class CommonProxyHttpForwardTest {
                 .expectBody(String.class)
                 .returnResult()
                 .getResponseBody();
-        log.info("jsonPostTest1 responseBody {} ", responseBody);
+        log.info("jsonPostTest1 responseBody {} ", JSONObject.parseObject(responseBody));
     }
 
     @Test
@@ -140,7 +159,7 @@ public class CommonProxyHttpForwardTest {
                 .expectBody(String.class)
                 .returnResult()
                 .getResponseBody();
-        log.info("jsonPostTest2 responseBody {} ", responseBody);
+        log.info("jsonPostTest2 responseBody {} ", JSONObject.parseObject(responseBody));
     }
 
     @Test
@@ -159,7 +178,7 @@ public class CommonProxyHttpForwardTest {
                 .expectBody(String.class)
                 .returnResult()
                 .getResponseBody();
-        log.info("jsonPostTest3 responseBody {} ", responseBody);
+        log.info("jsonPostTest3 responseBody {} ", JSONObject.parseObject(responseBody));
     }
 
     @Test
@@ -185,7 +204,7 @@ public class CommonProxyHttpForwardTest {
                 .expectBody(String.class)
                 .returnResult()
                 .getResponseBody();
-        log.info("jsonPostTest4 responseBody {} ", responseBody);
+        log.info("jsonPostTest4 responseBody {} ", JSONObject.parseObject(responseBody));
     }
 
     @Test
@@ -206,7 +225,7 @@ public class CommonProxyHttpForwardTest {
                 .expectBody(String.class)
                 .returnResult()
                 .getResponseBody();
-        log.info("jsonPostTest5 responseBody {} ", responseBody);
+        log.info("jsonPostTest5 responseBody {} ", JSONObject.parseObject(responseBody));
     }
 
     @Test
@@ -225,7 +244,7 @@ public class CommonProxyHttpForwardTest {
                 .expectBody(String.class)
                 .returnResult()
                 .getResponseBody();
-        log.info("protoPostTest1 responseBody {} ", responseBody);
+        log.info("protoPostTest1 responseBody {} ", JSONObject.parseObject(responseBody));
     }
 
     @Test
@@ -244,6 +263,6 @@ public class CommonProxyHttpForwardTest {
                 .expectBody(String.class)
                 .returnResult()
                 .getResponseBody();
-        log.info("protoPostTest2 responseBody {} ", responseBody);
+        log.info("protoPostTest2 responseBody {} ", JSONObject.parseObject(responseBody));
     }
 }

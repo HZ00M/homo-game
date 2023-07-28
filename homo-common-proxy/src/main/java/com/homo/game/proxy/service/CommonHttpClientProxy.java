@@ -33,6 +33,7 @@ import com.homo.core.rpc.client.RpcClientMgr;
 
 import com.homo.core.utils.rector.Homo;
 import com.homo.core.utils.trace.ZipkinUtil;
+import io.grpc.StatusRuntimeException;
 import io.homo.proto.client.ClientRouterMsg;
 import io.homo.proto.client.Msg;
 import io.homo.proto.rpc.Req;
@@ -62,6 +63,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
     private RpcClientMgr rpcClientMgr;
     @Autowired
     private AuthTokenHandler tokenHandler;
+
     @Override
     public void init() {
         ReadableDataSource<String, List<FlowRule>> flowRuleDataSource = new ApolloDataSource<>(commonProxyProperties.getDatasourceNamespace(), "flowRules",
@@ -76,6 +78,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
         });
         FlowRuleManager.register2Property(flowRuleDataSource.getProperty());
     }
+
     @Override
     public Homo<String> httpForward(JSONObject requestJson, JSONObject headerJson) {
         try {
@@ -98,6 +101,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
             }
             Homo<Boolean> canForwardPromise;
             if (commonProxyProperties.getIgnoreCheckTokenKeys().contains(forwardKey)) {
+                //login-service-http登陆服请求不校验token
                 canForwardPromise = Homo.result(true);
             } else {
                 String appId = headerJson.getString(ProxyKey.X_HOMO_APP_ID);
@@ -110,7 +114,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                     ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.param_miss.getCode()).codeDesc(HomoCommonError.param_miss.message()).build();
                     return Homo.result(JSON.toJSONString(responseMsg));
                 }
-                canForwardPromise = tokenHandler.checkToken(appId, channelId, userId, token);
+                canForwardPromise = tokenHandler.checkToken(appId,channelId, userId, token);
             }
             return canForwardPromise
                     .nextDo(pass -> {
@@ -168,7 +172,8 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
             return Homo.result(JSONObject.toJSONString(responseMsg));
         }
     }
-    public Homo<String> httpCall(AsyncEntry asyncEntry, String host, String url, String method, String msg, JSONObject headersJson, JSONObject requestJson) {
+
+    private Homo<String> httpCall(AsyncEntry asyncEntry, String host, String url, String method, String msg, JSONObject headersJson, JSONObject requestJson) {
         return Homo.warp(() -> {
             log.info("httpCall start host {} url {} method {} msg {} headersJson {} requestJson {}", host, url, method, msg, headersJson, requestJson);
             String responseTimeStr = headersJson.getString(ProxyKey.X_HOMO_RESPONSE_TIME);
@@ -228,11 +233,18 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                         if (asyncEntry != null) {
                             asyncEntry.exit();
                         }
+                        ResponseMsg responseMsg;
+                        if (throwable instanceof StatusRuntimeException) {
+                            responseMsg = ResponseMsg.builder().code(HomoCommonError.remote_server_no_response.getCode()).codeDesc(HomoCommonError.remote_server_no_response.msgFormat(host)).build();
+                        } else {
+                            responseMsg = ResponseMsg.builder().code(HomoCommonError.common_system_error.getCode()).codeDesc(HomoCommonError.common_system_error.message()).build();
+                        }
                         log.error("httpCall error headersJson {} requestJson {}", headersJson, requestJson, throwable);
-                        return Homo.error(throwable);
+                        return Homo.result(JSONObject.toJSONString(responseMsg));
                     });
         });
     }
+
     @Override
     public Homo<String> clientJsonMsgCheckToken(ProxyParam proxyParam, HeaderParam headerParam) {
         log.info("clientJsonMsgCheckToken call headerParam {} proxyParam {}", headerParam, proxyParam);
@@ -249,7 +261,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
             return Homo.result(JSON.toJSONString(responseMsg));
         }
 
-        return tokenHandler.checkToken(appId, token, userId, channelId)
+        return tokenHandler.checkToken(appId,token, userId, channelId)
                 .nextDo(checkPass -> {
                     if (!checkPass) {
                         log.error("clientJsonMsgCheckToken checkPass error headerParam {} proxyParam {}", headerParam, proxyParam);
@@ -281,10 +293,16 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                 })
                 .errorContinue(throwable -> {
                     log.error("clientJsonMsgCheckToken system error headerParam {} proxyParam {} e", headerParam, proxyParam, throwable);
-                    ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.common_system_error.getCode()).codeDesc(HomoCommonError.common_system_error.message()).build();
+                    ResponseMsg responseMsg;
+                    if (throwable instanceof StatusRuntimeException) {
+                        responseMsg = ResponseMsg.builder().code(HomoCommonError.common_system_error.getCode()).codeDesc(HomoCommonError.common_system_error.message()).build();
+                    } else {
+                        responseMsg = ResponseMsg.builder().code(HomoCommonError.remote_server_no_response.getCode()).codeDesc(HomoCommonError.remote_server_no_response.msgFormat(srcService)).build();
+                    }
                     return Homo.result(JSON.toJSONString(responseMsg));
                 });
     }
+
     @Override
     public Homo<Msg> clientPbMsgCheckToken(ClientRouterMsg clientRouterMsg) {
         String srcService = clientRouterMsg.getSrcService();
@@ -300,7 +318,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
             return Homo.result(responseMsg);
         }
 
-        return tokenHandler.checkToken(appId, token, userId, channelId)
+        return tokenHandler.checkToken(appId,token, userId, channelId)
                 .nextDo(checkPass -> {
                     if (!checkPass) {
                         log.info("clientPbMsgCheckToken !checkPass userId {} srcService {} msgId {} appId {} channelId {}",
@@ -331,8 +349,20 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                                 return Homo.result(responseMsg);
                             });
                     return homo;
+                })
+                .errorContinue(throwable -> {
+                    log.error("clientPbMsgCheckToken system error clientRouterMsg {}  e", clientRouterMsg, throwable);
+                    Msg responseMsg;
+                    if (throwable instanceof StatusRuntimeException) {
+                        responseMsg = Msg.newBuilder().setCode(HomoCommonError.remote_server_no_response.getCode()).setCodeDesc(HomoCommonError.remote_server_no_response.msgFormat(srcService)).build();
+                    } else {
+                        responseMsg = Msg.newBuilder().setCode(HomoCommonError.common_system_error.getCode()).setCodeDesc(HomoCommonError.common_system_error.message()).build();
+
+                    }
+                    return Homo.result(responseMsg);
                 });
     }
+
     @Override
     public Homo<String> clientJsonMsgCheckSign(ProxyParam proxyParam, HeaderParam headerParam) {
         log.info("clientJsonMsgCheckToken call headerParam {} proxyParam {}", headerParam, proxyParam);
@@ -379,16 +409,22 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                         return Homo.result(JSON.toJSONString(responseMsg));
                     });
             return homo.errorContinue(throwable -> {
-                log.error("clientJsonMsgCheckToken rpcCall error headerParam {} proxyParam {} e", headerParam, proxyParam, throwable);
-                ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.common_system_error.getCode()).codeDesc(HomoCommonError.common_system_error.message()).build();
+                log.error("clientJsonMsgCheckSign rpcCall error headerParam {} proxyParam {} e", headerParam, proxyParam, throwable);
+                ResponseMsg responseMsg;
+                if (throwable instanceof StatusRuntimeException) {
+                    responseMsg = ResponseMsg.builder().code(HomoCommonError.remote_server_no_response.getCode()).codeDesc(HomoCommonError.remote_server_no_response.msgFormat(srcService)).build();
+                } else {
+                    responseMsg = ResponseMsg.builder().code(HomoCommonError.common_system_error.getCode()).codeDesc(HomoCommonError.common_system_error.message()).build();
+                }
                 return Homo.result(JSON.toJSONString(responseMsg));
             });
         } catch (Exception e) {
-            log.error("clientJsonMsgCheckToken system error headerParam {} proxyParam {} e", headerParam, proxyParam, e);
+            log.error("clientJsonMsgCheckSign system error headerParam {} proxyParam {} e", headerParam, proxyParam, e);
             ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.common_system_error.getCode()).codeDesc(HomoCommonError.common_system_error.message()).build();
             return Homo.result(JSON.toJSONString(responseMsg));
         }
     }
+
     @Override
     public Homo<Msg> clientPbMsgCheckSign(ClientRouterMsg clientRouterMsg) {
         String srcService = clientRouterMsg.getSrcService();
@@ -442,12 +478,22 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                                 .setMsgContent(ByteString.copyFrom(data[0]))
                                 .build();
                         return Homo.result(responseMsg);
+                    })
+                    .errorContinue(throwable -> {
+                        log.error("clientPbMsgCheckSign system error clientRouterMsg {}  e", clientRouterMsg, throwable);
+                        Msg responseMsg = Msg.newBuilder().setCode(HomoCommonError.common_system_error.getCode()).setCodeDesc(HomoCommonError.common_system_error.message()).build();
+                        return Homo.result(responseMsg);
                     });
             return homo;
         } catch (Exception e) {
             log.error("clientPbMsgCheckSign system error  {} msgId {} userId {} token {} appId {} channelId {} clientSign {} ",
-                    srcService, msgId, userId, token, appId, channelId, clientSign,e);
-            Msg responseMsg = Msg.newBuilder().setCode(HomoCommonError.common_system_error.getCode()).setCodeDesc(HomoCommonError.common_system_error.message()).build();
+                    srcService, msgId, userId, token, appId, channelId, clientSign, e);
+            Msg responseMsg;
+            if (e instanceof StatusRuntimeException) {
+                responseMsg = Msg.newBuilder().setCode(HomoCommonError.remote_server_no_response.getCode()).setCodeDesc(HomoCommonError.remote_server_no_response.msgFormat(srcService)).build();
+            } else {
+                responseMsg = Msg.newBuilder().setCode(HomoCommonError.common_system_error.getCode()).setCodeDesc(HomoCommonError.common_system_error.message()).build();
+            }
             return Homo.result(responseMsg);
         }
     }

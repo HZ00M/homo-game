@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.homo.game.login.proto";     // 指定包名
+option java_outer_classname = "LoginMsg";
+
+
+message Auth {
+    string userId = 1;
+    string token = 2;
+    string appId = 3;
+    string channelId = 4;
+}
+
+message NewAccount{
+    string account = 1;
+    string password = 2;
+}

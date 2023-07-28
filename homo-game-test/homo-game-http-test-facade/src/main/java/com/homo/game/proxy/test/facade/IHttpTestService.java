@@ -23,7 +23,7 @@ public interface IHttpTestService {
 
     Homo<String> jsonPostTest4(JSONObject param1, JSONObject param2,JSONObject header);
 
-    Homo<String> jsonPostTest5(Integer podIndex, ParameterMsg parameterMsg, String params, JSONObject header);
+    Homo<String> jsonPostTest5( String params, JSONObject header);
 
     Homo<HttpTestRsp> protoPostTest1(HttpTestReq req, ClientRouterHeader header);
 

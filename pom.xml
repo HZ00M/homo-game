@@ -31,6 +31,8 @@
         <module>homo-game-proxy-facade</module>
         <module>homo-game-test</module>
         <module>homo-game-common-util</module>
+        <module>homo-game-login</module>
+        <module>homo-game-login-facade</module>
     </modules>
 
     <dependencies>
@@ -93,7 +95,16 @@
                 <artifactId>homo-game-proxy</artifactId>
                 <version>${revision}</version>
             </dependency>
-
+            <dependency>
+                <groupId>com.homo</groupId>
+                <artifactId>homo-game-login-facade</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.homo</groupId>
+                <artifactId>homo-game-login</artifactId>
+                <version>${revision}</version>
+            </dependency>
             <dependency>
                 <groupId>com.alibaba.csp</groupId>
                 <artifactId>sentinel-core</artifactId>

@@ -16,7 +16,7 @@ public class ProxyHandlerProperties {
     public boolean serverEnable;
     @Value("${homo.common.handler.limit.enable:true}")
     public boolean limitEnable;
-    @Value("#{'${homo.common.handler.user.whitelist}'.split(',')}")
+    @Value("#{'${homo.common.handler.user.whitelist:}'.split(',')}")
     public Set<String> userWhiteList;
     @Value("${homo.common.handler.limit.num:10000}")
     public Integer limitNum;

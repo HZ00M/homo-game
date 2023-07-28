@@ -52,8 +52,8 @@ public class HttpTestService extends BaseService implements IHttpTestService {
     }
 
     @Override
-    public Homo<String> jsonPostTest5(Integer podIndex, ParameterMsg parameterMsg, String params, JSONObject header) {
-        log.info("jsonPostTest5 podIndex {} parameterMsg {} params {} header {}", podIndex, parameterMsg, params,header);
+    public Homo<String> jsonPostTest5( String params, JSONObject header) {
+        log.info("jsonPostTest5  params {} header {}", params,header);
         return Homo.result("success");
     }
 

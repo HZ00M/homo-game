@@ -41,7 +41,8 @@ public class CommonProxyProperties {
     @Value("#{${homo.common.pathForward.server.path.map}}")
     /**
      * {
-     *     "http-test-service": "3333"
+     *     "http-test-service": "3333",
+     *     "login-service-http": "http://http-test-service:31505"
      * }
      */
     private Map<String,String> forwardUrlMap;

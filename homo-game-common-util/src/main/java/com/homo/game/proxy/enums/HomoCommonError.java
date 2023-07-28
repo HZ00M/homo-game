@@ -14,6 +14,7 @@ public enum HomoCommonError implements HomoThrowable {
     user_limit(307,"user limit %s"),
     entity_type_not_found(308,"entity type not found %s"),
     entity_pod_not_found(309,"entity pod not fount %s"),
+    remote_server_no_response(310,"remote server %s no response")
     ;
 
     private int code;

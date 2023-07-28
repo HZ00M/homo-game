@@ -9,7 +9,7 @@
         <version>${revision}</version>
     </parent>
 
-    <artifactId>homo-game-common-util</artifactId>
+    <artifactId>homo-game-login</artifactId>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
@@ -20,11 +20,11 @@
     <dependencies>
         <dependency>
             <groupId>com.homo</groupId>
-            <artifactId>homo-core-system</artifactId>
+            <artifactId>homo-game-login-facade</artifactId>
         </dependency>
         <dependency>
             <groupId>com.homo</groupId>
-            <artifactId>homo-game-login-facade</artifactId>
+            <artifactId>homo-core-system</artifactId>
         </dependency>
     </dependencies>
 </project>
