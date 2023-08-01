@@ -237,7 +237,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                         if (throwable instanceof StatusRuntimeException) {
                             responseMsg = ResponseMsg.builder().code(HomoCommonError.remote_server_no_response.getCode()).codeDesc(HomoCommonError.remote_server_no_response.msgFormat(host)).build();
                         } else {
-                            responseMsg = ResponseMsg.builder().code(HomoCommonError.common_system_error.getCode()).codeDesc(HomoCommonError.common_system_error.message()).build();
+                            responseMsg = ResponseMsg.builder().code(HomoCommonError.common_system_error.getCode()).codeDesc(HomoCommonError.common_system_error.msgFormat(throwable.getMessage())).build();
                         }
                         log.error("httpCall error headersJson {} requestJson {}", headersJson, requestJson, throwable);
                         return Homo.result(JSONObject.toJSONString(responseMsg));

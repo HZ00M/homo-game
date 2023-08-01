@@ -6,7 +6,7 @@ import com.homo.core.utils.exception.HomoThrowable;
 public enum HomoCommonError implements HomoThrowable {
     success(200, "success"),
     flow_limit_error(301, "flow limit %s"),
-    common_system_error(302, "common_system_error "),
+    common_system_error(302, "common_system_error %"),
     token_error(303, "token error %s"),
     no_forward_url(304, "can not find forwardKey %s url,check config homo.common.httpForward.url.map"),
     param_miss(305, "param miss %s"),
