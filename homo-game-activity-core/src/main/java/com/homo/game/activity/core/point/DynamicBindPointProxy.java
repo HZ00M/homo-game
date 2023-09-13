@@ -4,10 +4,10 @@ import com.homo.core.utils.delegate.BroadCasterCall;
 import com.homo.game.activity.core.Node;
 import com.homo.game.activity.core.data.NodeData;
 import com.homo.game.activity.facade.event.Event;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.Assert;
 
-@Log4j2
+@Slf4j
 public class DynamicBindPointProxy extends BroadCasterCall<NodeData> {
     @Override
     protected Boolean execute(NodeData nodeData, Object... objects) throws Exception {

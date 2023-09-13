@@ -13,7 +13,7 @@ import io.homo.proto.client.ClientRouterHeader;
 import io.homo.proto.client.ClientRouterMsg;
 import io.homo.proto.client.Msg;
 import io.homo.proto.client.ParameterMsg;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -22,8 +22,8 @@ import reactor.util.function.Tuple2;
 import java.util.List;
 
 @Component
-@Log4j2
-public class EntityRouterHandler implements ProxyHandler {
+@Slf4j
+public class EntityRouterHandler implements RouterHandler {
     //    static String SERVICE_NAME = "SERVICE_NAME";
     @Autowired
     ServiceStateMgr serviceStateMgr;
@@ -36,13 +36,14 @@ public class EntityRouterHandler implements ProxyHandler {
     }
     @Override
     public Homo<Void> handler(HandlerContext context) {
-        ClientRouterMsg routerMsg = context.getRouterMsg();
-        ClientRouterHeader header = context.getHeader();
-        String userId = routerMsg.getUserId();
-        String msgId = routerMsg.getMsgId();
-        List<ByteString> msgContentList = routerMsg.getMsgContentList();
-        String entityType = routerMsg.getEntityType();
-        String srcService = routerMsg.getSrcService();
+        String msgId = context.getParam(RouterHandler.PARAM_MSG_ID,String.class);
+        String srcService = context.getParam(RouterHandler.PARAM_SRC_SERVICE,String.class);
+        String appId = context.getParam(RouterHandler.PARAM_APP_ID,String.class);
+        String channelId = context.getParam(RouterHandler.PARAM_CHANNEL_ID,String.class);
+        String userId = context.getParam(RouterHandler.PARAM_USER_ID,String.class);
+        String token = context.getParam(RouterHandler.PARAM_TOKEN,String.class);
+        String entityType = context.getParam(RouterHandler.PARAM_ENTITY_TYPE,String.class);
+        List<ByteString> msgContentList = context.getParam(RouterHandler.PARAM_MSG,List.class);
         if (!StringUtils.isEmpty(entityType)) {
             return serviceStateMgr.getServiceInfo(entityType)
                     .nextDo(serverInfo -> {

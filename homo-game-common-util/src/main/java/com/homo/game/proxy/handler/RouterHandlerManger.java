@@ -2,27 +2,26 @@ package com.homo.game.proxy.handler;
 
 import com.homo.core.utils.exception.HomoError;
 import com.homo.core.utils.rector.HomoSink;
-import com.homo.game.proxy.enums.HomoCommonError;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
 
-@Log4j2
+@Slf4j
 @Component
-public class HandlerManger {
+public class RouterHandlerManger {
     @Autowired
-    public Map<String, ProxyHandler> handlerMap;
+    public Map<String, RouterHandler> handlerMap;
 
     public HandlerContext create(HomoSink sink, String... handlerName) {
-        List<ProxyHandler> list = new ArrayList<>();
+        List<RouterHandler> list = new ArrayList<>();
         for (String filterName : handlerName) {
-            ProxyHandler proxyHandler = handlerMap.get(filterName);
-            if (proxyHandler == null){
+            RouterHandler routerHandler = handlerMap.get(filterName);
+            if (routerHandler == null){
                 throw HomoError.throwError(HomoError.defaultError,filterName,"not found");
             }
-            list.add(proxyHandler);
+            list.add(routerHandler);
         }
         HandlerContext context = new HandlerContext(sink, list);
         return context;

@@ -1,13 +1,13 @@
 package com.homo.game.login;
 
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import java.util.concurrent.CountDownLatch;
 
-@Log4j2
+@Slf4j
 @SpringBootApplication(scanBasePackages = "com.homo.game")
 public class LoginApplication implements CommandLineRunner {
     static CountDownLatch countDownLatch = new CountDownLatch(1);

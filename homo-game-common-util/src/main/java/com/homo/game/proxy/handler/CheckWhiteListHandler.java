@@ -10,7 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
-public class CheckWhiteListHandler implements ProxyHandler {
+public class CheckWhiteListHandler implements RouterHandler {
 
     @Autowired
     ProxyHandlerProperties proxyHandlerProperties;
@@ -21,9 +21,12 @@ public class CheckWhiteListHandler implements ProxyHandler {
 
     @Override
     public Homo<Void> handler(HandlerContext context) {
-        ClientRouterMsg routerMsg = context.getRouterMsg();
-        String userId = routerMsg.getUserId();
-        ClientRouterHeader header = context.getHeader();
+        String msgId = context.getParam(RouterHandler.PARAM_MSG_ID,String.class);
+        String srcService = context.getParam(RouterHandler.PARAM_SRC_SERVICE,String.class);
+        String appId = context.getParam(RouterHandler.PARAM_APP_ID,String.class);
+        String channelId = context.getParam(RouterHandler.PARAM_CHANNEL_ID,String.class);
+        String userId = context.getParam(RouterHandler.PARAM_USER_ID,String.class);
+        String token = context.getParam(RouterHandler.PARAM_TOKEN,String.class);
         if (!proxyHandlerProperties.serverEnable && !proxyHandlerProperties.userWhiteList.contains(userId)){
             context.success(Msg.newBuilder().setMsgId(HomoCommonError.token_error.name()).build());
             return Homo.resultVoid();

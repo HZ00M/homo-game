@@ -5,7 +5,7 @@ import com.homo.core.storage.ObjStorage;
 import com.homo.core.utils.rector.Homo;
 import com.homo.core.utils.secret.EncryptUtils;
 import com.homo.game.login.utils.LoginSignatureUtil;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Component
-@Log4j2
+@Slf4j
 public class TokenHandler {
     @Autowired
     private ObjStorage storage;

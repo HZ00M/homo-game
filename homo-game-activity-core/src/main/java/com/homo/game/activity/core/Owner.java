@@ -7,7 +7,7 @@ import com.homo.core.utils.rector.Homo;
 import com.homo.game.activity.core.data.NodeData;
 import com.homo.game.activity.core.point.DynamicBindPointProxy;
 import com.homo.game.activity.facade.event.Event;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 数据所有者
  * 用于保存用户在所有节点（Node）相关的数据
  */
-@Log4j2
+@Slf4j
 public class Owner {
     /**
      * 所有者id

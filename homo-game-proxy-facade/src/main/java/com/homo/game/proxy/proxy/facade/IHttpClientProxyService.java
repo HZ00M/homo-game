@@ -11,7 +11,7 @@ import io.homo.proto.client.Msg;
  * 客户端http代理 转发消息到内部服务器（可能是有状态服，也可能是无状态服）
  */
 @ServiceExport(tagName = "http-client-proxy:31506",driverType = RpcType.http,isStateful = false,isMainServer = true)
-public interface IHttpClientProxy {
+public interface IHttpClientProxyService {
     /**
      * 处理客户端消息，解析消息头，然后将消息体转发到对应的服务上
      * Params:

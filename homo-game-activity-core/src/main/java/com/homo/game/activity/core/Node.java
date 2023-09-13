@@ -23,7 +23,7 @@ import com.homo.game.activity.facade.meta.PubPoint;
 import com.homo.game.activity.facade.meta.ReplyPoint;
 import com.homo.game.activity.facade.meta.SubPoint;
 import lombok.Data;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.CollectionUtils;
 import reactor.util.function.Tuple2;
@@ -48,7 +48,7 @@ import java.util.*;
  * 如果Owner上某个节点没有被打开，那么该Owner相关的事件（ReportEvent）就不会被该节点订阅处理
  * Owner相关的外部请求事件（RequestEvent）的处理不依赖与节点的open，节点都可以处理Owner的外部请求事件（RequestEvent）
  */
-@Log4j2
+@Slf4j
 @Data
 public abstract class Node implements Point {
 

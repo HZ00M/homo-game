@@ -7,12 +7,12 @@ import io.homo.proto.client.ClientRouterHeader;
 import io.homo.proto.client.ClientRouterMsg;
 import io.homo.proto.client.Msg;
 import io.homo.proto.client.ParameterMsg;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-@Log4j2
+@Slf4j
 @Component
-public class CheckParamMsgHandler implements ProxyHandler{
+public class CheckParamMsgHandler implements RouterHandler {
     static String PARAMETER_MSG = "PARAM";
     @Override
     public Integer order() {
@@ -20,13 +20,12 @@ public class CheckParamMsgHandler implements ProxyHandler{
     }
     @Override
     public Homo<Void> handler(HandlerContext context) {
-        ClientRouterMsg routerMsg = context.getRouterMsg();
-        ClientRouterHeader header = context.getHeader();
-        String msgId = routerMsg.getMsgId();
-        String srcService = routerMsg.getSrcService();
-        String userId = routerMsg.getUserId();
-        String token = routerMsg.getToken();
-        String channelId = routerMsg.getChannelId();
+        String msgId = context.getParam(RouterHandler.PARAM_MSG_ID,String.class);
+        String srcService = context.getParam(RouterHandler.PARAM_SRC_SERVICE,String.class);
+        String appId = context.getParam(RouterHandler.PARAM_APP_ID,String.class);
+        String channelId = context.getParam(RouterHandler.PARAM_CHANNEL_ID,String.class);
+        String userId = context.getParam(RouterHandler.PARAM_USER_ID,String.class);
+        String token = context.getParam(RouterHandler.PARAM_TOKEN,String.class);
         boolean isNullOrEmpty = ProxyCheckParamUtils.checkIsNullOrEmpty(msgId, srcService, userId, token, channelId);
         if (isNullOrEmpty){
             log.error("CheckParamMsgHandler param error msgId {} srcService {} userId {} token {} channelId {}",

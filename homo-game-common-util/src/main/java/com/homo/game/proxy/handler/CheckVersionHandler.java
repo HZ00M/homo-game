@@ -6,7 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
-public class CheckVersionHandler implements ProxyHandler {
+public class CheckVersionHandler implements RouterHandler {
     static String ios = "IOS";
     static String android = "Android";
     @Autowired

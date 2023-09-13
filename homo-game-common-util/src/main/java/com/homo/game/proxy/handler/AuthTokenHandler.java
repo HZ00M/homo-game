@@ -7,11 +7,9 @@ import com.homo.game.login.proto.Auth;
 import com.homo.game.proxy.enums.HomoCommonError;
 import com.homo.core.utils.rector.Homo;
 import com.homo.game.proxy.util.ProxySignatureUtil;
-import io.homo.proto.client.ClientRouterHeader;
-import io.homo.proto.client.ClientRouterMsg;
 import io.homo.proto.client.Msg;
 import io.homo.proto.client.ParameterMsg;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -21,8 +19,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Component
-@Log4j2
-public class AuthTokenHandler implements ProxyHandler {
+@Slf4j
+public class AuthTokenHandler implements RouterHandler {
     @Value("#{${homo.common.homo.app.checkToken.appSecretKey.map:{}}}")
     private Map<String, String> appSecretKeyMap;
     //    @Autowired
@@ -40,13 +38,11 @@ public class AuthTokenHandler implements ProxyHandler {
 
     @Override
     public Homo<Void> handler(HandlerContext context) {
-        ClientRouterMsg routerMsg = context.getRouterMsg();
-        ClientRouterHeader header = context.getHeader();
-        String appId = routerMsg.getAppId();
-        String channelId = routerMsg.getChannelId();
-        String userId = routerMsg.getUserId();
-        String clientToken = routerMsg.getToken();
-        return checkToken(appId,channelId, userId, clientToken)
+        String appId = context.getParam(RouterHandler.PARAM_APP_ID,String.class);
+        String channelId = context.getParam(RouterHandler.PARAM_CHANNEL_ID,String.class);
+        String userId = context.getParam(RouterHandler.PARAM_USER_ID,String.class);
+        String token = context.getParam(RouterHandler.PARAM_TOKEN,String.class);
+        return checkToken(appId,channelId, userId, token)
                 .nextDo(authPass -> {
                             if (authPass) {
                                 if (true) {//todo 简化逻辑  认证成功即算一人在线
@@ -54,7 +50,7 @@ public class AuthTokenHandler implements ProxyHandler {
                                 }
                                 return context.handler(context);
                             }
-                            log.error("AuthTokenHandler param error userId {} token {} channelId {}", userId, clientToken, channelId);
+                            log.error("AuthTokenHandler param error userId {} token {} channelId {}", userId, token, channelId);
                             context.success(Msg.newBuilder().setCode(HomoCommonError.param_miss.getCode()).setCodeDesc(HomoCommonError.param_miss.message()).build());
                             return Homo.resultVoid();
                         }

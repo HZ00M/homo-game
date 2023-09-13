@@ -33,6 +33,8 @@
         <module>homo-game-common-util</module>
         <module>homo-game-login</module>
         <module>homo-game-login-facade</module>
+        <module>homo-game-stateful-proxy-facade</module>
+        <module>homo-game-stateful-proxy</module>
     </modules>
 
     <dependencies>
@@ -93,6 +95,16 @@
             <dependency>
                 <groupId>com.homo</groupId>
                 <artifactId>homo-game-proxy</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.homo</groupId>
+                <artifactId>homo-game-stateful-proxy-facade</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.homo</groupId>
+                <artifactId>homo-game-stateful-proxy</artifactId>
                 <version>${revision}</version>
             </dependency>
             <dependency>

@@ -4,7 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.homo.game.activity.core.Node;
 import com.homo.game.activity.core.node.InSideCarNode;
 import com.homo.game.activity.core.node.OutSideCarNode;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.Assert;
 import reactor.util.function.Tuples;
 
@@ -24,7 +24,7 @@ import static com.homo.game.activity.core.config.CombineConfig.Connect;
  * json配置数据由节点编辑器生成
  * 程序启动时会加载json配置数据
  */
-@Log4j2
+@Slf4j
 public class JsonGraphLoader {
     static final String KEY_FATHER_TYPE = "baseType";
     static final String KEY_TYPE_NAME = "nodeType";

@@ -6,12 +6,12 @@ import com.homo.core.utils.rector.Homo;
 import com.homo.game.login.facade.IHttpLoginService;
 import com.homo.game.login.facade.dto.Response;
 import com.homo.game.login.handler.TokenHandler;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
-@Log4j2
+@Slf4j
 public class HttpLoginService extends BaseService implements IHttpLoginService {
     @Autowired
     TokenHandler tokenHandler;

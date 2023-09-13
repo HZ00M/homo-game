@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 import java.nio.charset.StandardCharsets;
 
 @Component
-public class CheckUserNumberHandler implements ProxyHandler, ServiceModule {
+public class CheckUserNumberHandler implements RouterHandler, ServiceModule {
     @Autowired
     ProxyHandlerProperties proxyHandlerProperties;
     @Autowired
@@ -48,9 +48,13 @@ public class CheckUserNumberHandler implements ProxyHandler, ServiceModule {
 
     @Override
     public Homo<Void> handler(HandlerContext context) {
-        ClientRouterMsg routerMsg = context.getRouterMsg();
-        ClientRouterHeader header = context.getHeader();
-        if (proxyHandlerProperties.limitEnable && !proxyHandlerProperties.userWhiteList.contains(routerMsg.getUserId())){
+        String msgId = context.getParam(RouterHandler.PARAM_MSG_ID,String.class);
+        String srcService = context.getParam(RouterHandler.PARAM_SRC_SERVICE,String.class);
+        String appId = context.getParam(RouterHandler.PARAM_APP_ID,String.class);
+        String channelId = context.getParam(RouterHandler.PARAM_CHANNEL_ID,String.class);
+        String userId = context.getParam(RouterHandler.PARAM_USER_ID,String.class);
+        String token = context.getParam(RouterHandler.PARAM_TOKEN,String.class);
+        if (proxyHandlerProperties.limitEnable && !proxyHandlerProperties.userWhiteList.contains(userId)){
             if (serverPlayerNumber >= proxyHandlerProperties.getLimitNum()){
                 context.success(Msg.newBuilder().setMsgId(HomoCommonError.user_limit.name()).build());
                 return Homo.resultVoid();

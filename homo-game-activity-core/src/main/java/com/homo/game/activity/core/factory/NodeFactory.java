@@ -7,7 +7,7 @@ import com.homo.game.activity.core.config.NodeConfig;
 import com.homo.game.activity.core.Point;
 import com.homo.game.activity.facade.meta.NodeType;
 import com.homo.game.activity.facade.component.Single;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.core.io.support.ResourcePatternResolver;
@@ -27,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 节点工厂实现类
  * 管理节点配置信息和实例信息
  */
-@Log4j2
+@Slf4j
 public class NodeFactory {
 
     /**

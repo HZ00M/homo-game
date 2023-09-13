@@ -1,4 +1,4 @@
-package com.homo.game.proxy.handler;
+package com.homo.game.proxy.handler.handler;
 
 import com.homo.core.facade.rpc.RpcAgentClient;
 import com.homo.core.facade.service.ServiceStateMgr;
@@ -7,36 +7,35 @@ import com.homo.core.rpc.base.utils.ServiceUtil;
 import com.homo.core.rpc.client.RpcClientMgr;
 import com.homo.core.utils.rector.Homo;
 import com.homo.core.utils.serial.HomoSerializationProcessor;
-import com.homo.game.proxy.proxy.facade.ClientJsonRouterMsg;
-import lombok.extern.log4j.Log4j2;
+import com.homo.game.proxy.handler.HandlerContext;
+import com.homo.game.proxy.handler.RouterHandler;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import reactor.util.function.Tuple2;
 
 @Component
-@Log4j2
-public class JsonRouterHandler implements ProxyHandler {
+@Slf4j
+public class JsonRouterHandler implements RouterHandler {
     @Autowired
     ServiceStateMgr serviceStateMgr;
     @Autowired
     RpcClientMgr rpcClientMgr;
     @Autowired
     HomoSerializationProcessor homoSerializationProcessor;
-    public static String JSON_PARAM_KEY = "jsonParam";
     @Override
     public Homo<Void> handler(HandlerContext context) {
-        ClientJsonRouterMsg routerMsg = context.getParam(JSON_PARAM_KEY, ClientJsonRouterMsg.class);
-        String serviceName = routerMsg.getServiceName();
-        String msgId = routerMsg.getMsgId();
-        String msgContent = routerMsg.getMsgContent();
-        Integer podIndex = routerMsg.getPodIndex();
+        String msgContent = context.getParam(RouterHandler.PARAM_MSG,String.class);
+        String msgId = context.getParam(RouterHandler.PARAM_MSG_ID,String.class);
+        String srcService = context.getParam(RouterHandler.PARAM_SRC_SERVICE,String.class);
+        Integer podIndex = context.getParam(RouterHandler.PARAM_POD_ID,Integer.class);
         RpcAgentClient grpcAgentClient;
         if (podIndex != null) {
             //指定pod为有状态服务器
-            String formatStatefulName = ServiceUtil.formatStatefulName(serviceName, podIndex);
+            String formatStatefulName = ServiceUtil.formatStatefulName(srcService, podIndex);
             grpcAgentClient = rpcClientMgr.getGrpcAgentClient(formatStatefulName, true);
         }else {
-            grpcAgentClient = rpcClientMgr.getGrpcServerlessAgentClient(serviceName);
+            grpcAgentClient = rpcClientMgr.getGrpcServerlessAgentClient(srcService);
         }
         JsonRpcContent rpcContent = JsonRpcContent.builder().data(msgContent).build();
         return grpcAgentClient.rpcCall(msgId, rpcContent)

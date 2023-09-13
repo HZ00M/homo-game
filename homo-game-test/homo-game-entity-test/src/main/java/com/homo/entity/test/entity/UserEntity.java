@@ -6,9 +6,9 @@ import com.homo.core.utils.rector.Homo;
 import com.homo.entity.test.facade.entity.IUerEntity;
 import io.homo.proto.client.TestReq;
 import io.homo.proto.client.TestRsp;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 
-@Log4j2
+@Slf4j
 public class UserEntity extends AbstractAbilityEntity implements SaveAble ,IUerEntity {
     @Override
     public Homo<TestRsp> test(TestReq testReq) {

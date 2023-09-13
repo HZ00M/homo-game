@@ -6,7 +6,7 @@ import com.homo.game.proxy.enums.ProxyKey;
 import io.homo.proto.client.HttpTestReq;
 import io.homo.proto.client.Msg;
 import io.homo.proto.rpc.Req;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -23,7 +23,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
 
-@Log4j2
+@Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 //@WebFluxTest

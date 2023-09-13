@@ -1,0 +1,149 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.homo.proto.client";
+option java_outer_classname = "ClientProxy";
+
+package msg;
+
+//message ClientRouterMsg {
+//  string appId =1;
+//  string srcService = 2;
+//  string token = 3;
+//  string userId = 4;
+//  string channelId = 5;
+//  string msgId = 6;
+//  string sign = 7;
+//  repeated bytes msgContent = 8;
+//}
+//message PbResponseMsg{
+//  int32 code         = 1;   //转发消息的结果，1代表成功，其他表示失败
+//  string msg          = 2;   //失败原因，code不等于1时msg字段的值有意义
+//  string msgId        = 3;   //消息id
+//  bytes msgContent   = 4;   //业务返回的结构
+//}
+
+//message ClientAuthMsg {
+//    string token        = 1;
+//    string userid         = 2;
+//}
+//
+//message ParameterMsg {
+//    string userId   = 1;
+//    string channelId     = 2;
+//}
+//
+message ToClientReq {
+    string clientId    = 1;
+    string msgType     = 2;
+    bytes msgContent   = 3;
+}
+//有状态proxy错误码
+message ToClientResp {
+    enum ErrorType //枚举消息类型
+    {
+        OK = 0;
+        ERROR = 1;
+        USER_NOT_FOUND = 2;
+        POD_ID_IS_NULL = 3;
+    }
+    int32 errorCode = 1;
+    string errorMsg = 2;
+}
+//
+//message RouterMsgReq {
+//    string serviceName   = 1;
+//    string msgId         = 2;
+//    string msgType       = 3;
+//    bytes msgContent     = 4;
+//}
+//
+//
+message LoginMsgReq {
+    string token          = 1;
+    string userId         = 2;
+    string channelId      = 3;
+    string appVersion = 4;
+    string resVersion = 5;
+    string adId = 6;
+}
+
+message LoginMsgResp {
+    enum ErrType //枚举消息类型
+    {
+        OK = 0;  //成功
+        ERROR = 1; //系统异常
+        OTHER_LOGIN = 2;//其他人已经登录(针对断线重连的情况)
+        CACHE_ERROR = 3;//缓存错误
+    }
+    ErrType errorCode = 1;
+    string errorMsg     = 2;
+}
+
+message SyncInfo{
+    //本地缓存开始序号/将要开始的，重新登陆时序号为0，后续继续调用TransferCacheReq直到count为0
+    int32 startSeq = 1;
+    //接收到的包序号
+    int32 recReq = 2;
+    //缓存数量,0代表没有缓存
+    int32 count = 3;
+}
+
+message LoginAndSyncReq{
+    LoginMsgReq loginMsgReq = 1;
+    SyncInfo syncInfo = 2;
+}
+
+message LoginAndSyncResp{
+    LoginMsgResp loginMsgResp = 1;
+    SyncInfo syncInfo = 2;
+}
+
+message TransferCacheReq {
+    string userId = 1;
+    int32 podId = 2;
+    SyncInfo syncInfo = 3;
+
+}
+
+message TransferCacheResp {
+    enum ErrorType {
+        OK = 0;
+        ERROR = 1;
+        USER_NOT_FOUND = 2;
+        CACHE_INVALID = 3;
+    }
+    message SyncMsg{
+        string msgId = 1;
+        //客户端proxy传输协议
+        bytes msg = 2;
+        //消息sessionId
+        int32 sessionId = 3;
+        //消息的发送序号
+        int32 sendSeq = 4;
+        //消息的确认号
+        int32 recReq = 5;
+    }
+    ErrorType errorCode = 1;
+    string errorMsg = 2;
+    int32 sendSeq = 3;
+    int32 recvSeq = 4;
+    repeated SyncMsg syncMsgList = 5;
+}
+
+// 有状态proxy断开连接消息
+message DisconnectMsg{
+    enum ErrorType //枚举消息类型
+    {
+        OTHER_USER_LOGIN = 0;//顶号
+        OTHER_USER_RECONNECT = 1;//重连
+        SERVER_CLOSE = 2;  // 关服
+    }
+    ErrorType errorCode = 1;
+    string errorMsg = 2;
+}
+
+// 踢人消息
+message KickUserMsg{
+    string kickReason = 1;    // 被踢原因
+}
