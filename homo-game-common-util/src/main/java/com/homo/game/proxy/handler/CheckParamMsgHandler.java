@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 public class CheckParamMsgHandler implements RouterHandler {
-    static String PARAMETER_MSG = "PARAM";
+
     @Override
     public Integer order() {
         return 8;

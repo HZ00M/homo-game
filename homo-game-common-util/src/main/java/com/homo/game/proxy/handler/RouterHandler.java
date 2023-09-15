@@ -19,6 +19,7 @@ public interface RouterHandler {
     String HEADER_RES_VERSION = "RES_VERSION";
     String HEADER_AD_ID = "AD_ID";
     String PARAM_SYNC_INFO = "SYNC_INFO";
+    String PARAMETER_MSG = "PARAM";
     default String name() {
         return this.getClass().getSimpleName();
     }

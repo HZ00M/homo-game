@@ -9,6 +9,8 @@ import com.homo.core.gate.tcp.handler.ProtoLogicHandler;
 import com.homo.core.rpc.base.service.ServiceMgr;
 import com.homo.core.rpc.client.RpcClientMgr;
 import com.homo.core.rpc.client.proxy.RpcProxyMgr;
+import com.homo.core.utils.concurrent.event.Event;
+import com.homo.core.utils.concurrent.queue.CallQueueMgr;
 import com.homo.core.utils.concurrent.queue.IdCallQueue;
 import com.homo.core.utils.exception.HomoError;
 import com.homo.core.utils.rector.Homo;
@@ -18,7 +20,6 @@ import com.homo.game.proxy.handler.RouterHandler;
 import com.homo.game.proxy.handler.RouterHandlerManger;
 import com.homo.game.stateful.proxy.StatefulProxyService;
 import io.homo.proto.client.*;
-import io.homo.proto.entity.EntityRequest;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,16 +65,38 @@ public class LoginPbLogicHandler extends ProtoLogicHandler {
             LoginMsgReq loginMsgReq = loginAndSyncReq.getLoginMsgReq();
             processLogin(loginMsgReq, loginAndSyncReq.getSyncInfo(), proxyGateClient, header);
         } else if (msgId.equals(ClientRouterMsg.class.getSimpleName())) {
-            processRouterMsg(msgId, msg, sessionId, proxyGateClient);
+            ClientRouterMsg clientRouterMsg = ClientRouterMsg.parseFrom(msg.getMsgContent());
+            processRouterMsg(clientRouterMsg, proxyGateClient);
         }
     }
-    private void processRouterMsg(String msgId, Msg msg, short sessionId, ProxyGateClient proxyGateClient) {
-        //todo tpc proxy转发逻辑实现
+
+    private void processRouterMsg(ClientRouterMsg clientRouterMsg, ProxyGateClient proxyGateClient) throws Exception{
+        if (!proxyGateClient.isLogin()){
+        }
+        CallQueueMgr callQueueMgr = CallQueueMgr.getInstance();
+        callQueueMgr.addEvent(callQueueMgr.choiceQueueIdBySeed(proxyGateClient.getQueueId()), new Event() {
+            @Override
+            public void process() {
+                serviceStateMgr.getServiceInfo(clientRouterMsg.getEntityType())
+                        .consumerValue(serviceInfo -> {
+                            ParameterMsg parameterMsg = ParameterMsg.newBuilder()
+                                    .setUserId(proxyGateClient.getUid())
+                                    .setChannelId(proxyGateClient.getChannelId())
+                                    .build();
+                            Homo.warp(sink -> {
+                                routerHandlerMgr.create(sink, "entityRouterHandler", "routerHandler")
+                                        .router(clientRouterMsg)
+                                        .setParam(RouterHandler.PARAM_SRC_SERVICE, serviceInfo.getServiceTag())
+                                        .setParam(RouterHandler.PARAMETER_MSG, parameterMsg)
+                                        .process();
+                            }).start();
+
+                        }) ;
+            }
+        });
+
     }
 
-    private void processEntityRouterMsg() {
-
-    }
 
     public void processLogin(LoginMsgReq loginMsgReq, SyncInfo syncInfo, ProxyGateClient gateClient, GateMessage.Header header) {
         String userId = loginMsgReq.getUserId();

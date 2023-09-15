@@ -7,9 +7,12 @@ import com.homo.core.gate.DefaultGateServer;
 import com.homo.core.utils.concurrent.queue.CallQueueMgr;
 import com.homo.core.utils.concurrent.queue.CallQueueProducer;
 import com.homo.core.utils.concurrent.queue.IdCallQueue;
+import com.homo.core.utils.concurrent.schedule.HomoTimerMgr;
+import com.homo.core.utils.concurrent.schedule.HomoTimerTask;
 import com.homo.core.utils.rector.Homo;
 import com.homo.core.utils.spring.GetBeanUtil;
 import com.homo.game.stateful.proxy.StatefulProxyService;
+import com.homo.game.stateful.proxy.config.StatefulProxyProperties;
 import com.homo.game.stateful.proxy.pojo.CacheMsg;
 import io.homo.proto.client.*;
 import javafx.util.Pair;
@@ -37,6 +40,8 @@ public class ProxyGateClient extends DefaultGateClient implements CallQueueProdu
     //重连后的目的proxy的podIndex
     public int transferDestPod = -1;
     public static Map<String, ReconnectBox> msg_cache = new HashMap<>();
+    StatefulProxyProperties statefulProxyProperties = GetBeanUtil.getBean(StatefulProxyProperties.class);
+    private HomoTimerTask timerTask;
 
     public ProxyGateClient(DefaultGateServer gateServer, String name) {
         super(gateServer, name);
@@ -183,5 +188,45 @@ public class ProxyGateClient extends DefaultGateClient implements CallQueueProdu
     //接收先去连接对象gateClient销毁前的缓存包
     public boolean recvTransferMsgs(TransferCacheResp resp) throws Exception {
         return reconnectBox.recvTransferMsgs(resp);
+    }
+
+    public Homo<Boolean> unRegisterClient(boolean offlineNotify, String reason) {
+        if (state == State.INIT) {
+            log.info("no user tcp close handler:{}", this);
+            state = State.CLOSED;
+            return Homo.result(true);
+        }
+        if (state == State.CLOSED || state == State.INACTIVE) {
+            log.warn("unRegisterClient uid {} already closed!", uid);
+            return Homo.result(true);
+        }
+        ParameterMsg parameterMsg = ParameterMsg.newBuilder().setChannelId(channelId).setUserId(uid).build();
+        StateOfflineRequest offlineRequest = StateOfflineRequest.newBuilder().setReason(reason).setTime(System.currentTimeMillis()).build();
+        if (offlineNotify) {
+            for (String notifyService : statefulProxyProperties.getClientOfflineNotifyServiceSet()) {
+                //todo 通知服务操作
+            }
+        }
+        state = State.CLOSED;
+        ProxyGateClientMgr.removeFromValid(uid);
+        return Homo.result(true);
+    }
+
+    @Override
+    public void onClose(String reason) {
+        log.info("GateClientImpl onClose reason {}", reason);
+        if (isLogin()) {
+            state = State.INACTIVE;
+            timerTask = HomoTimerMgr.getInstance().once(() -> {
+                        Homo.queue(queue, () -> {
+                            log.info("开始销毁 uid {} handlerState {}", uid, state);
+                            return unRegisterClient(true, reason);
+                        }, null).start();
+                    },
+                    statefulProxyProperties.getClientOfflineDelayCloseSecond() * 1000);
+
+        } else {
+            unRegisterClient(false, reason).start();
+        }
     }
 }

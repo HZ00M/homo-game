@@ -38,11 +38,9 @@ public class EntityRouterHandler implements RouterHandler {
     public Homo<Void> handler(HandlerContext context) {
         String msgId = context.getParam(RouterHandler.PARAM_MSG_ID,String.class);
         String srcService = context.getParam(RouterHandler.PARAM_SRC_SERVICE,String.class);
-        String appId = context.getParam(RouterHandler.PARAM_APP_ID,String.class);
-        String channelId = context.getParam(RouterHandler.PARAM_CHANNEL_ID,String.class);
         String userId = context.getParam(RouterHandler.PARAM_USER_ID,String.class);
-        String token = context.getParam(RouterHandler.PARAM_TOKEN,String.class);
         String entityType = context.getParam(RouterHandler.PARAM_ENTITY_TYPE,String.class);
+        ParameterMsg parameterMsg = context.getParam(RouterHandler.PARAMETER_MSG, ParameterMsg.class);
         List<ByteString> msgContentList = context.getParam(RouterHandler.PARAM_MSG,List.class);
         if (!StringUtils.isEmpty(entityType)) {
             return serviceStateMgr.getServiceInfo(entityType)
@@ -64,7 +62,7 @@ public class EntityRouterHandler implements RouterHandler {
                                     .nextDo(choicePodId->{
                                         String statefulName = ServiceUtil.formatStatefulName(serverInfo.getServiceTag(), choicePodId);
                                         RpcAgentClient agentClient = rpcClientMgr.getGrpcAgentClient(statefulName, true);
-                                        ParameterMsg parameterMsg = context.getParam(CheckParamMsgHandler.PARAMETER_MSG, ParameterMsg.class);
+
 
                                         byte[][] data = new byte[msgContentList.size() + 2][];
                                         data[0] = serializationProcessor.writeByte(choicePodId);
