@@ -22,6 +22,7 @@
         <module>homo-game-test-http-client</module>
         <module>homo-game-entity-test-facade</module>
         <module>homo-game-entity-test</module>
+        <module>homo-tcp-client-test</module>
     </modules>
     <build>
         <plugins>
