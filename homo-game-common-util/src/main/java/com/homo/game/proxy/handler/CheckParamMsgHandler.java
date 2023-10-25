@@ -9,6 +9,9 @@ import io.homo.proto.client.Msg;
 import io.homo.proto.client.ParameterMsg;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
+import redis.clients.jedis.Tuple;
 
 @Slf4j
 @Component
@@ -30,7 +33,8 @@ public class CheckParamMsgHandler implements RouterHandler {
         if (isNullOrEmpty){
             log.error("CheckParamMsgHandler param error msgId {} srcService {} userId {} token {} channelId {}",
                     msgId,srcService,userId,token,channelId);
-            context.success(Msg.newBuilder().setCode(HomoCommonError.param_miss.getCode()).setCodeDesc(HomoCommonError.param_miss.message()).build());
+            Tuple2<Boolean, String> tuples = Tuples.of(false, "CheckParamMsgHandler check fail");
+            context.success(tuples);
             return Homo.resultVoid();
         }
         ParameterMsg parameterMsg = ParameterMsg.newBuilder().setUserId(userId).setChannelId(channelId).build();

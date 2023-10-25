@@ -3,9 +3,10 @@ package com.homo.game.stateful.proxy.gate;
 import com.core.ability.base.StorageEntityMgr;
 import com.homo.core.facade.gate.GateClient;
 import com.homo.core.facade.gate.GateMessage;
+import com.homo.core.facade.gate.GateMessageHeader;
 import com.homo.core.facade.lock.LockDriver;
 import com.homo.core.facade.service.ServiceStateMgr;
-import com.homo.core.gate.tcp.handler.ProtoLogicHandler;
+import com.homo.core.gate.tcp.handler.ProtoGateLogicHandler;
 import com.homo.core.rpc.base.service.ServiceMgr;
 import com.homo.core.rpc.client.RpcClientMgr;
 import com.homo.core.rpc.client.proxy.RpcProxyMgr;
@@ -24,12 +25,13 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import reactor.util.function.Tuple2;
 
 import java.util.concurrent.Callable;
 
 @Component
 @Slf4j
-public class LoginPbLogicHandler extends ProtoLogicHandler {
+public class LoginPbLogicHandler extends ProtoGateLogicHandler {
     @Autowired
     RouterHandlerManger routerHandlerMgr;
     @Autowired
@@ -42,14 +44,12 @@ public class LoginPbLogicHandler extends ProtoLogicHandler {
     @Autowired
     RpcClientMgr rpcClientMgr;
     @Autowired
-    RpcProxyMgr rpcProxyMgr;
-    @Autowired
     LockDriver lockDriver;
     @Autowired
     StorageEntityMgr entityMgr;
 
     @Override
-    public void process(Msg msg, GateClient gateClient, GateMessage.Header header) throws Exception {
+    public void doProcess(Msg msg, GateClient gateClient, GateMessageHeader header) throws Exception {
         String msgId = msg.getMsgId();
         short sessionId = header.getSessionId();
         short sendSeq = header.getSendSeq();
@@ -98,16 +98,16 @@ public class LoginPbLogicHandler extends ProtoLogicHandler {
     }
 
 
-    public void processLogin(LoginMsgReq loginMsgReq, SyncInfo syncInfo, ProxyGateClient gateClient, GateMessage.Header header) {
+    public void processLogin(LoginMsgReq loginMsgReq, SyncInfo syncInfo, ProxyGateClient gateClient, GateMessageHeader header) {
         String userId = loginMsgReq.getUserId();
         String channelId = loginMsgReq.getChannelId();
         String token = loginMsgReq.getToken();
         String appVersion = loginMsgReq.getAppVersion();
         String resVersion = loginMsgReq.getResVersion();
         String adId = loginMsgReq.getAdId();
-        Homo.queue(idCallQueue, new Callable<Homo<LoginMsgResp>>() {
+        Homo.queue(idCallQueue, new Callable<Homo<Tuple2<Boolean,String>>>() {
                     @Override
-                    public Homo<LoginMsgResp> call() throws Exception {
+                    public Homo<Tuple2<Boolean,String>> call() throws Exception {
                         return Homo.warp(sink -> {
                             routerHandlerMgr.create(sink, "checkParamMsgHandler", "checkWhiteListHandler", "checkUserNumberHandler",
                                             "authTokenHandler")
@@ -120,7 +120,7 @@ public class LoginPbLogicHandler extends ProtoLogicHandler {
                     }
                 }, null)
                 .consumerValue(resp -> {
-                    if (resp.getErrorCodeValue() == HomoCommonError.success.getCode()) {
+                    if (resp.getT1()) {
                         //如果登陆认证成功，登陆后处理
                         afterAuthLoginProcess(userId, gateClient, syncInfo)
                                 .consumerValue(loginMsgResp -> {
@@ -131,8 +131,8 @@ public class LoginPbLogicHandler extends ProtoLogicHandler {
                     } else {
                         Msg.Builder gateMsgResp = Msg.newBuilder();
                         LoginMsgResp loginMsgResp = LoginMsgResp.newBuilder()
-                                .setErrorCode(resp.getErrorCode())
-                                .setErrorMsg(resp.getErrorMsg())
+                                .setErrorCode(HomoCommonError.logon_fail.getCode())
+                                .setErrorMsg(HomoCommonError.logon_fail.message())
                                 .build();
 
                         Msg msg = gateMsgResp.setMsgContent(loginMsgResp.toByteString()).build();
@@ -171,10 +171,10 @@ public class LoginPbLogicHandler extends ProtoLogicHandler {
         return processPromise
                 .nextDo(processOk -> {
                     if (processOk) {
-                        LoginMsgResp LOGIN_SUCCESS = LoginMsgResp.newBuilder().setErrorMsg("success").setErrorCode(LoginMsgResp.ErrType.OK).build();
+                        LoginMsgResp LOGIN_SUCCESS = LoginMsgResp.newBuilder().setErrorMsg(HomoCommonError.success.message()).setErrorCode(HomoCommonError.success.getCode()).build();
                         return Homo.result(LOGIN_SUCCESS);
                     } else {
-                        LoginMsgResp LOGIN_FAIL = LoginMsgResp.newBuilder().setErrorMsg("fail").setErrorCode(LoginMsgResp.ErrType.OTHER_LOGIN).build();
+                        LoginMsgResp LOGIN_FAIL = LoginMsgResp.newBuilder().setErrorMsg(HomoCommonError.common_system_error.message()).setErrorCode(HomoCommonError.common_system_error.getCode()).build();
                         return Homo.result(LOGIN_FAIL);
                     }
                 });

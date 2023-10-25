@@ -69,14 +69,7 @@ message LoginMsgReq {
 }
 
 message LoginMsgResp {
-    enum ErrType //枚举消息类型
-    {
-        OK = 0;  //成功
-        ERROR = 1; //系统异常
-        OTHER_LOGIN = 2;//其他人已经登录(针对断线重连的情况)
-        CACHE_ERROR = 3;//缓存错误
-    }
-    ErrType errorCode = 1;
+    int32 errorCode = 1;
     string errorMsg     = 2;
 }
 

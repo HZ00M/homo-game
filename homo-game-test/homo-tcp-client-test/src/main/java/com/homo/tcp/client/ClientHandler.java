@@ -1,6 +1,7 @@
 package com.homo.tcp.client;
 
 import com.homo.core.facade.gate.GateMessage;
+import com.homo.core.facade.gate.GateMessageHeader;
 import com.homo.core.gate.tcp.GateMessagePackage;
 import io.homo.proto.client.Msg;
 import io.netty.channel.ChannelHandlerContext;
@@ -8,16 +9,17 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Consumer;
 
 @Slf4j
 public class ClientHandler extends ChannelInboundHandlerAdapter {
 
-    Map<String, Consumer<byte[]>> msgCallBackConsumerMap = new HashMap<>();
 
-    Map<Short, Consumer<byte[]>> callbackConsumerMap = new HashMap<>();
+    TcpClient tcpClient;
+
+    public ClientHandler(TcpClient tcpClient){
+        this.tcpClient = tcpClient;
+    }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
@@ -31,15 +33,15 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
 
             GateMessagePackage recvMsg = (GateMessagePackage) source;
             log.info("ClientHandler channelRead recvMsg {}", recvMsg);
-            GateMessage.Header header = recvMsg.getHeader();
+            GateMessageHeader header = recvMsg.getHeader();
             Msg msg = Msg.parseFrom(recvMsg.getBody());
             String msgId = msg.getMsgId();
-            short clientSeq = header.getClientSeq();
+            short clientSeq = header.getSessionId();//todo  处理clientSeq 和sessionId
             Consumer<byte[]> seqCallBack = popCallBack(clientSeq);
             if (seqCallBack != null) {
                 seqCallBack.accept(msg.getMsgContent().toByteArray());
             }
-            Consumer<byte[]> msgCallBack = msgCallBackConsumerMap.get(msgId);
+            Consumer<byte[]> msgCallBack = tcpClient.msgCallBackConsumerMap.get(msgId);
             if (msgCallBack != null) {
                 msgCallBack.accept(msg.getMsgContent().toByteArray());
             }
@@ -60,7 +62,7 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
         if (seq == 0) {
             return null;
         }
-        Consumer<byte[]> consumer = callbackConsumerMap.get(seq);
+        Consumer<byte[]> consumer = tcpClient.callbackConsumerMap.get(seq);
         if (consumer == null) {
             log.error("sessionId:{} mapped consumer not found!", seq);
             return null;

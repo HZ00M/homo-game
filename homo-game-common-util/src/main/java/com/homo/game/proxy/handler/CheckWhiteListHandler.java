@@ -8,6 +8,8 @@ import io.homo.proto.client.ClientRouterMsg;
 import io.homo.proto.client.Msg;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 @Component
 public class CheckWhiteListHandler implements RouterHandler {
@@ -28,7 +30,8 @@ public class CheckWhiteListHandler implements RouterHandler {
         String userId = context.getParam(RouterHandler.PARAM_USER_ID,String.class);
         String token = context.getParam(RouterHandler.PARAM_TOKEN,String.class);
         if (!proxyHandlerProperties.serverEnable && !proxyHandlerProperties.userWhiteList.contains(userId)){
-            context.success(Msg.newBuilder().setMsgId(HomoCommonError.token_error.name()).build());
+            Tuple2<Boolean, String> tuples = Tuples.of(false, "CheckWhiteListHandler check fail");
+            context.success(tuples);
             return Homo.resultVoid();
         }else {
             return context.handler(context);

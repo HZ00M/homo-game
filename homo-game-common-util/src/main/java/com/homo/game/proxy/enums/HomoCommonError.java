@@ -16,8 +16,8 @@ public enum HomoCommonError implements HomoThrowable {
     entity_pod_not_found(309,"entity pod not fount %s"),
     remote_server_no_response(310,"remote server %s no response"),
     gate_client_not_found(311,"gate_client_not_found"),
-    gate_client_transfer_fail(312,"gate_client_transfer_fail")
-    ;
+    gate_client_transfer_fail(312,"gate_client_transfer_fail"),
+    logon_fail(313, "login check fail");
     private int code;
     private String message;
 

@@ -8,10 +8,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import java.util.concurrent.CountDownLatch;
 
 @Slf4j
+@SpringBootApplication(scanBasePackages = "com.homo.game")
 public class StatefulProxyApplication implements CommandLineRunner {
     @Autowired
     private GateServerMgr gateServerMgr;
@@ -32,8 +34,8 @@ public class StatefulProxyApplication implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         int port = 666;
-        log.info("StatefulProxyApp run with port {} ",port);
-        ProxyGateServer proxyGateServer = new ProxyGateServer(StatefulProxyApplication.class.getSimpleName(),666);
+        log.info("StatefulProxyApplication run!------------------------------------------");
+        ProxyGateServer proxyGateServer = new ProxyGateServer(StatefulProxyApplication.class.getSimpleName(),port);
         gateServerMgr.startGateServer(proxyGateServer);
         TcpGateDriver tcpGate = (TcpGateDriver) gateServerMgr.getGateDriver();
         tcpGate.registerPostHandler(loginPbLogicHandler);

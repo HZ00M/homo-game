@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
@@ -38,28 +40,36 @@ public class AuthTokenHandler implements RouterHandler {
 
     @Override
     public Homo<Void> handler(HandlerContext context) {
-        String appId = context.getParam(RouterHandler.PARAM_APP_ID,String.class);
-        String channelId = context.getParam(RouterHandler.PARAM_CHANNEL_ID,String.class);
-        String userId = context.getParam(RouterHandler.PARAM_USER_ID,String.class);
-        String token = context.getParam(RouterHandler.PARAM_TOKEN,String.class);
-        return checkToken(appId,channelId, userId, token)
+        String appId = context.getParam(RouterHandler.PARAM_APP_ID, String.class);
+        String channelId = context.getParam(RouterHandler.PARAM_CHANNEL_ID, String.class);
+        String userId = context.getParam(RouterHandler.PARAM_USER_ID, String.class);
+        String token = context.getParam(RouterHandler.PARAM_TOKEN, String.class);
+//        final String userId = loginMsgReq.getUserId();
+//        final String channelId = loginMsgReq.getChannelId();
+//        final String authToken = loginMsgReq.getToken();
+//        final String appVersion = loginMsgReq.getAppVersion();
+//        final String resVersion = loginMsgReq.getResVersion();
+//        final String adId = loginMsgReq.getAdId();
+        return checkToken(appId, channelId, userId, token)
                 .nextDo(authPass -> {
                             if (authPass) {
                                 if (true) {//todo 简化逻辑  认证成功即算一人在线
                                     userNumberHandler.incrServerPlayerNumber();
                                 }
                                 return context.handler(context);
+                            } else {
+                                Tuple2<Boolean, String> tuples = Tuples.of(false, "AuthTokenHandler check fail");
+                                context.success(tuples);
+
                             }
-                            log.error("AuthTokenHandler param error userId {} token {} channelId {}", userId, token, channelId);
-                            context.success(Msg.newBuilder().setCode(HomoCommonError.param_miss.getCode()).setCodeDesc(HomoCommonError.param_miss.message()).build());
                             return Homo.resultVoid();
                         }
                 );
     }
 
-    public Homo<Boolean> checkToken(String appId,String channelId, String userId, String token) {
+    public Homo<Boolean> checkToken(String appId, String channelId, String userId, String token) {
         ParameterMsg parameterMsg = ParameterMsg.newBuilder().setChannelId(channelId).setUserId(userId).build();
-        Auth auth = Auth.newBuilder().setChannelId(channelId).setAppId(appId).setUserId(userId).setToken(token).build();
+        Auth auth = Auth.newBuilder().setChannelId(channelId).setUserId(userId).setToken(token).build();
         return loginService.auth(parameterMsg, auth)
                 .nextDo(ret -> {
                     return Homo.result(ret.checkSuccess());
@@ -101,8 +111,6 @@ public class AuthTokenHandler implements RouterHandler {
 //            return Homo.result(true);
 //        }
 //    }
-
-
 
 
     private JSONObject authToken(Map<String, String> headers, JSONObject payload) {

@@ -11,6 +11,8 @@ import io.homo.proto.client.ClientRouterMsg;
 import io.homo.proto.client.Msg;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 import java.nio.charset.StandardCharsets;
 
@@ -56,7 +58,8 @@ public class CheckUserNumberHandler implements RouterHandler, ServiceModule {
         String token = context.getParam(RouterHandler.PARAM_TOKEN,String.class);
         if (proxyHandlerProperties.limitEnable && !proxyHandlerProperties.userWhiteList.contains(userId)){
             if (serverPlayerNumber >= proxyHandlerProperties.getLimitNum()){
-                context.success(Msg.newBuilder().setMsgId(HomoCommonError.user_limit.name()).build());
+                Tuple2<Boolean, String> tuples = Tuples.of(false, "CheckUserNumberHandler check fail");
+                context.success(tuples);
                 return Homo.resultVoid();
             }
             return context.handler(context);

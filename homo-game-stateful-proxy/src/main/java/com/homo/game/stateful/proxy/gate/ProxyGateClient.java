@@ -2,6 +2,7 @@ package com.homo.game.stateful.proxy.gate;
 
 import com.google.protobuf.ByteString;
 import com.homo.core.facade.gate.GateMessage;
+import com.homo.core.facade.gate.GateMessageHeader;
 import com.homo.core.gate.DefaultGateClient;
 import com.homo.core.gate.DefaultGateServer;
 import com.homo.core.utils.concurrent.queue.CallQueueMgr;
@@ -32,8 +33,8 @@ public class ProxyGateClient extends DefaultGateClient implements CallQueueProdu
     @Getter
     public State state = State.INIT;
     public short sessionId;
-    public short sendSeqBeforeLogin = GateMessage.DEFAULT_SEND_SEQ;
-    public short confirmSeqBeforeLogin = GateMessage.DEFAULT_RECV_SEQ;
+    public short sendSeqBeforeLogin = GateMessageHeader.DEFAULT_SEND_SEQ;
+    public short confirmSeqBeforeLogin = GateMessageHeader.DEFAULT_RECV_SEQ;
     IdCallQueue queue = new IdCallQueue("gateClientQueue", 1000 * 11, IdCallQueue.DropStrategy.DROP_CURRENT_TASK);
     ReconnectBox reconnectBox;
     ReconnectConfig reconnectConfig;

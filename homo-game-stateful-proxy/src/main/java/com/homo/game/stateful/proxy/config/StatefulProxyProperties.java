@@ -17,7 +17,7 @@ public class StatefulProxyProperties {
     @Value("#{'${sm.stateful.server.whitelist:123}'.split(',')}")
     private Set<String> serverWhitelist;
 
-    @Value("${sm.stateful.server.close.info}")
+    @Value("${sm.stateful.server.close.info:}")
     private String closeInfo;
     @Value("${sm.stateful.client.offline.delay.second:10}")
     private Integer clientOfflineDelayCloseSecond;
