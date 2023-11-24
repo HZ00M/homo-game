@@ -9,44 +9,32 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 负责管理客户端连接信息
+ * 负责管理可断线重连的gateClient
  */
 @Component
 @Slf4j
 public class ProxyGateClientMgr {
-    @Autowired
-    public StatefulProxyProperties proxyProperties;
-    public static Map<String, ProxyGateClient> uidToGateClientMap = new ConcurrentHashMap<>(1000);
+    public static Map<String, ProxyGateClient> clientNameToGateClientMap = new ConcurrentHashMap<>(1000);
     public static Map<String, ProxyGateClient> uidToTransferMap = new ConcurrentHashMap<>(100);
 
-    public static ProxyGateClient putToValid(String uid, ProxyGateClient client){
-        log.debug("putToValid uid {} handler {}",uid,client);
-        return uidToGateClientMap.put(uid,client);
+    public static ProxyGateClient bindGate(String uid, ProxyGateClient client) {
+        log.info("bindGate setUid uid {} hashCode {} client {}", uid, client.hashCode(), client);
+        uidToTransferMap.put(uid,client);
+        return clientNameToGateClientMap.put(client.name(), client);
     }
 
-    public static ProxyGateClient getFromValid(String uid){
-        return uidToGateClientMap.get(uid);
+    public static ProxyGateClient unBindGate(String uid, ProxyGateClient client) {
+        log.info("unBindGate setUid uid {} hashCode {} client {} ", uid, client.hashCode(), client);
+        uidToTransferMap.remove(uid);
+        return clientNameToGateClientMap.remove(client.name());
     }
 
-    public static ProxyGateClient removeFromValid(String uid){
-        ProxyGateClient client = uidToGateClientMap.remove(uid);
-        log.debug("removeFromValid uid {} handler {}",uid,client);
-        return client;
+    public static ProxyGateClient getClientByClientName(String clientName) {
+        return clientNameToGateClientMap.get(clientName);
     }
 
-
-    public static ProxyGateClient putToTransferred(String uid, ProxyGateClient client){
-        log.debug("putToTransferred uid {} handler {}",uid,client);
-        return uidToTransferMap.put(uid,client);
-    }
-
-    public static ProxyGateClient getFromTransferred(String uid){
+    public static ProxyGateClient getClientByUid(String uid) {
         return uidToTransferMap.get(uid);
     }
 
-    public static ProxyGateClient removeFromTransferred(String uid){
-        ProxyGateClient client = uidToTransferMap.remove(uid);
-        log.debug("removeFromTransferred uid {} handler {}",uid,client);
-        return client;
-    }
 }

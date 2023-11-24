@@ -24,7 +24,7 @@ public interface RouterHandler {
         return this.getClass().getSimpleName();
     }
 
-    Homo<Void> handler(HandlerContext context);
+    Homo<Object> handler(HandlerContext context);
 
     default Integer order() {
         return 0;

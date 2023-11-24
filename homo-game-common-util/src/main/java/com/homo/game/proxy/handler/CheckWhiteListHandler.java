@@ -22,7 +22,7 @@ public class CheckWhiteListHandler implements RouterHandler {
     }
 
     @Override
-    public Homo<Void> handler(HandlerContext context) {
+    public Homo<Object> handler(HandlerContext context) {
         String msgId = context.getParam(RouterHandler.PARAM_MSG_ID,String.class);
         String srcService = context.getParam(RouterHandler.PARAM_SRC_SERVICE,String.class);
         String appId = context.getParam(RouterHandler.PARAM_APP_ID,String.class);
@@ -31,10 +31,8 @@ public class CheckWhiteListHandler implements RouterHandler {
         String token = context.getParam(RouterHandler.PARAM_TOKEN,String.class);
         if (!proxyHandlerProperties.serverEnable && !proxyHandlerProperties.userWhiteList.contains(userId)){
             Tuple2<Boolean, String> tuples = Tuples.of(false, "CheckWhiteListHandler check fail");
-            context.success(tuples);
-            return Homo.resultVoid();
-        }else {
-            return context.handler(context);
+            context.promiseResult(tuples);
         }
+        return context.handler(context);
     }
 }

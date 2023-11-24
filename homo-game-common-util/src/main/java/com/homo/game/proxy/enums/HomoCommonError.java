@@ -4,7 +4,6 @@ import com.homo.core.utils.exception.HomoError;
 import com.homo.core.utils.exception.HomoThrowable;
 
 public enum HomoCommonError implements HomoThrowable {
-    success(200, "success"),
     flow_limit_error(301, "flow limit %s"),
     common_system_error(302, "common_system_error %"),
     token_error(303, "token error %s"),
@@ -17,7 +16,10 @@ public enum HomoCommonError implements HomoThrowable {
     remote_server_no_response(310,"remote server %s no response"),
     gate_client_not_found(311,"gate_client_not_found"),
     gate_client_transfer_fail(312,"gate_client_transfer_fail"),
-    logon_fail(313, "login check fail");
+    logon_fail(313, "login check fail"),
+    send_to_client_fail(314,"send toClient fail"),
+    send_to_client_gate_not_found(315,"send toClient fail gate not found"),
+    ;
     private int code;
     private String message;
 

@@ -17,14 +17,14 @@ public interface IGrpcLoginService {
      * @param parameterMsg userId
      * @param auth 鉴权消息
      */
-    Homo<Response> auth(ParameterMsg parameterMsg, Auth auth);
+    Homo<Response> auth(Integer podIndex,ParameterMsg parameterMsg, Auth auth);
 
     /**
      * 查询用户信息
      * @param auth
      * @return
      */
-    Homo<Response> queryUserInfo(Auth auth);
+    Homo<com.homo.game.login.proto.Response> queryUserInfo(Integer podIndex,ParameterMsg parameterMsg,Auth auth);
 
     /**
      * 发送短信验证码
@@ -32,13 +32,13 @@ public interface IGrpcLoginService {
      * @param fetchType 验证码类型
      * @return 操作结果
      */
-    Homo<Response> sendPhoneCode(Auth param, String phone, String fetchType);
+    Homo<Response> sendPhoneCode(Integer podIndex,ParameterMsg parameterMsg,Auth param, String phone, String fetchType);
     /**
      * 验证短信验证码的准确性
      * @param phone 手机号
      * @param fetchType 认证类型
      * @return 操作结果
      */
-    Homo<Response> validatePhoneCode(Auth param, String phone, String code, String fetchType);
+    Homo<Response> validatePhoneCode(Integer podIndex,ParameterMsg parameterMsg,Auth param, String phone, String code, String fetchType);
 
 }

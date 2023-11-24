@@ -1,6 +1,7 @@
 package com.homo.game.stateful.proxy.gate;
 
-import com.homo.core.facade.gate.GateMessage;
+import com.homo.core.facade.gate.GateMessageHeader;
+import com.homo.core.utils.spring.GetBeanUtil;
 import com.homo.game.stateful.proxy.pojo.CacheMsg;
 import io.homo.proto.client.TransferCacheResp;
 import javafx.util.Pair;
@@ -15,18 +16,26 @@ import java.util.List;
 @Slf4j
 @Data
 public class ReconnectBox {
-    String userId;
+    String uid;
     //本端已经收到对端的包序号
-    short recvSeq = GateMessage.DEFAULT_RECV_SEQ;
+    short clientSendSeq = GateMessageHeader.DEFAULT_RECV_SEQ;
     //本端已经发送给对端的包序号
-    short sendSeq = GateMessage.DEFAULT_SEND_SEQ;
-    CircularFifoQueue<CacheMsg> cacheQueue;
-    ReconnectConfig reconnectConfig;
+    short innerSendSeq = GateMessageHeader.DEFAULT_SEND_SEQ;
+//    short innerSendSeq = 0;
 
-    public ReconnectBox(String uid, ReconnectConfig reconnectConfig) {
-        this.userId = uid;
-        this.reconnectConfig = reconnectConfig;
+    CircularFifoQueue<CacheMsg> cacheQueue;
+    ReconnectConfig reconnectConfig = GetBeanUtil.getBean(ReconnectConfig.class);
+
+    public ReconnectBox() {
+
+    }
+
+    public void init(){
+        short clientSendSeq = GateMessageHeader.DEFAULT_RECV_SEQ;
+        //本端已经发送给对端的包序号
+        short innerSendSeq = GateMessageHeader.DEFAULT_SEND_SEQ;
         this.cacheQueue = new CircularFifoQueue<>(reconnectConfig.getMaxSize());
+        log.info("ReconnectBox init uid {} MaxSize {}", uid, reconnectConfig.getMaxSize());
     }
 
     //cache info Pair<当前缓存开始序列号,已缓存个数(0代表left val为下一个缓存序号)>
@@ -37,18 +46,21 @@ public class ReconnectBox {
     }
 
     public Short getCurrentSendSeq() {
-        Short beginCache = cacheQueue.isEmpty() ? getCycleSeq(sendSeq) : cacheQueue.get(0).sendSeq;
+        Short beginCache = cacheQueue.isEmpty() ? getCycleSeq(innerSendSeq) : cacheQueue.get(0).innerSendSeq;
         return beginCache;
     }
 
     //转换用
-    public void cacheMsg(String msgId, byte[] bytes, short sessionId, short sendSequence, short recvSequence) {
-        this.sendSeq = sendSequence;
-        this.recvSeq = recvSequence;
-        cacheQueue.add(new CacheMsg(msgId, bytes, sessionId, sendSequence, recvSequence));
-        if(cacheQueue.size() == cacheQueue.maxSize()){
-            log.error("cacheMsg is full user {}  size {}",sessionId,cacheQueue.size());
+    private CacheMsg doCacheMsg(String msgId, byte[] bytes, short sessionId, short serverSendSeq, short clientSendSeq) {
+        this.innerSendSeq = serverSendSeq;
+        this.clientSendSeq = clientSendSeq;
+        CacheMsg cacheMsg = new CacheMsg(msgId, bytes, sessionId, serverSendSeq, clientSendSeq);
+        cacheQueue.add(cacheMsg);
+        log.info("doCacheMsg uid {} msg {} serverSendSeq {} clientSendSeq {}",uid,cacheMsg,serverSendSeq,clientSendSeq);
+        if (cacheQueue.size() == cacheQueue.maxSize()) {
+            log.error("doCacheMsg is full user {}  size {}", sessionId, cacheQueue.size());
         }
+        return cacheMsg;
     }
 
     //消息发送用
@@ -56,26 +68,25 @@ public class ReconnectBox {
         if (!reconnectConfig.cacheFilter(msgId)) {
             return false;
         }
-        sendSeq = getCycleSeq(sendSeq);
-        CacheMsg cacheMsg = new CacheMsg(msgId, bytes, sessionId, sendSeq, recvSeq);
-        cacheQueue.add(cacheMsg);
-        if (cacheQueue.size() == cacheQueue.maxSize()) {
-            log.error("cacheMsg cache is full user {} size {}", userId, cacheQueue.size());
-        }
+        innerSendSeq = getCycleSeq(innerSendSeq);
+        CacheMsg cacheMsg = doCacheMsg(msgId, bytes, sessionId, innerSendSeq, clientSendSeq);
+        log.info("server send cacheMsg user {} innerSendSeq {} cacheMsg {}", uid, innerSendSeq, cacheMsg);
         return true;
     }
 
-    public Pair<Boolean, List<CacheMsg>> transfer(Integer cacheStartReq, Integer clientConfirmSeq, Integer count) {
-        Short clientCacheStartReqShort = cacheStartReq.shortValue();
-        Short clientConfirmSeqShort = clientConfirmSeq.shortValue();
-
-        trimCache(clientConfirmSeqShort);
+    public Pair<Boolean, List<CacheMsg>> transfer(Integer clientCacheSendReq, Integer clientConfirmInnerSeq, Integer count) {
+        Short clientCacheStartReqShort = clientCacheSendReq.shortValue();
+        Short clientConfirmSeqShort = clientConfirmInnerSeq.shortValue();
+        trimCache(clientConfirmSeqShort);//先清空已读的消息
         Short currentSendSeq = getCurrentSendSeq();
         Short msgCount = getMsgCount();
-        //检查是否满足重连条件//判断确认的包序是否在对方cache中,或者可以接上
-        boolean inCache = inCache(clientConfirmSeqShort);
+        //检查是否满足重连条件
+        //clientConfirmSeq in cache //todo 待完善，先默认全部返回
+        // 判断确认的包序是否在对方cache中,可以接上
+
+        boolean inCache = inCache(clientConfirmSeqShort) ;
         List<CacheMsg> allCacheMsg = new ArrayList<>();
-        if (inCache) {
+        if ( inCache) {
             allCacheMsg = getAllCacheMsg();
         }
         return new Pair<>(inCache, allCacheMsg);
@@ -83,6 +94,17 @@ public class ReconnectBox {
 
     public List<CacheMsg> getAllCacheMsg() {
         return new ArrayList<>(cacheQueue);
+    }
+
+    public List<CacheMsg> getCacheMsgList(Integer index,Integer count) {
+        List<CacheMsg> cacheMsgList = new ArrayList<>();
+        for (int i = index; i < index + count; i++) {
+            if (cacheQueue.get(i)==null){
+                break;
+            }
+            cacheMsgList.add(cacheQueue.get(i));
+        }
+        return cacheMsgList;
     }
 
     public CacheMsg getCacheMsg(int index) {
@@ -95,11 +117,14 @@ public class ReconnectBox {
      * @param clientConfirmSeq
      */
     public void trimCache(Short clientConfirmSeq) {
+        if (clientConfirmSeq == 0){
+            return;
+        }
         if (inCache(clientConfirmSeq)) {
             CacheMsg poll = null;
             do {
                 poll = cacheQueue.poll();
-            } while (poll != null && poll.sendSeq != clientConfirmSeq);
+            } while (poll != null && poll.innerSendSeq != clientConfirmSeq);
         }
     }
 
@@ -112,9 +137,9 @@ public class ReconnectBox {
         if (beginCacheMsg == null) {
             return false;
         }
-        short beginSeq = beginCacheMsg.getSendSeq();
-        short endSeq = endCacheMsg.getSendSeq();
-        return inCache(clientConfirmSeq, beginSeq, endSeq);
+        short beginInnerSeq = beginCacheMsg.getInnerSendSeq();
+        short endInnerSeq = endCacheMsg.getInnerSendSeq();
+        return inCache(clientConfirmSeq, beginInnerSeq, endInnerSeq);
     }
 
     /**
@@ -134,34 +159,35 @@ public class ReconnectBox {
 
     public boolean recvTransferMsgs(TransferCacheResp resp) {
         TransferCacheResp.ErrorType errorCode = resp.getErrorCode();
-        if (errorCode != TransferCacheResp.ErrorType.OK){
+        if (errorCode != TransferCacheResp.ErrorType.OK) {
             return false;
         }
+        init();// 单点模式模拟重连
         List<TransferCacheResp.SyncMsg> syncMsgList = resp.getSyncMsgListList();
         Integer sendSeq = resp.getSendSeq();
         Integer recvSeq = resp.getRecvSeq();
         //接收缓存消息
         for (TransferCacheResp.SyncMsg syncMsg : syncMsgList) {
+//            log.info("syncMsg uid {} syncMsg {}",uid,syncMsg);
             //先设置SyncMsg内的同步序号
-            cacheMsg(syncMsg.getMsgId(),syncMsg.getMsg().toByteArray(),new Integer(syncMsg.getSessionId()).shortValue(),
-                    sendSeq.shortValue() , recvSeq.shortValue());
+            doCacheMsg(syncMsg.getMsgId(), syncMsg.getMsg().toByteArray(), new Integer(syncMsg.getSessionId()).shortValue(),
+                    sendSeq.shortValue(), recvSeq.shortValue());
         }
         //但外层如果带序号，则覆盖里层序号
-        if (sendSeq > 0){
-            this.sendSeq = sendSeq.shortValue();
+        if (sendSeq > 0) {
+            this.innerSendSeq = sendSeq.shortValue();
         }
-        if (recvSeq > 0){
-            this.recvSeq = recvSeq.shortValue();
+        if (recvSeq > 0) {
+            this.clientSendSeq = recvSeq.shortValue();
         }
         return true;
     }
 
 
-
     public void clear() {
         cacheQueue.clear();
-        recvSeq = GateMessage.DEFAULT_RECV_SEQ;
-        sendSeq = GateMessage.DEFAULT_SEND_SEQ;
+        clientSendSeq = GateMessageHeader.DEFAULT_RECV_SEQ;
+        innerSendSeq = GateMessageHeader.DEFAULT_SEND_SEQ;
     }
 
     public CacheMsg getCacheMsg(Integer index) {
@@ -177,26 +203,25 @@ public class ReconnectBox {
         return cacheQueue.size();
     }
 
-    public void updateMsgSeq(short peerSendSeq, short peerConfirmRecvSeq) {
-        if (log.isDebugEnabled()) {
-            log.debug("updateCache uid:{} peerCurrentSendSeq {} peerConfirmRecvSeq {}", userId, peerSendSeq, peerConfirmRecvSeq);
-        }
+    public void updateMsgSeq(short clientSendSeq, short confirmServerSendSeq) {
+        log.info("client send updateMsgSeq uid {} clientSendSeq {} confirmServerSendSeq {}", uid, clientSendSeq, confirmServerSendSeq);
         //忽略心跳包，业务包需要确认序号
         /**
          * 如果peerCurrentSendSeq < 0 表示是心跳包,不需要确认序号
          * 如果peerCurrentSendSeq >= 0 表示是业务包,需要确认序号
          * 心跳包也会带上客户端的确认序号
+         * 目前约定sendReq从0开始
          */
-        if (peerSendSeq >= 0) {
-            if (getCycleSeq(recvSeq) != peerSendSeq) {
+        if (clientSendSeq >= 0) {
+            if (getCycleSeq(this.clientSendSeq) != clientSendSeq) {
                 // 接受序号必须是连续的
-                log.error("userId {} receive req error ! recvReq {} peerSendSeq {}", userId, recvSeq, peerSendSeq);
+                log.error("userId {} receive req error ! recvReq {} peerSendSeq {} peerConfirmRecvSeq {}", uid, this.clientSendSeq, clientSendSeq, confirmServerSendSeq);
             }
             // 记录自己已经收到的消息序号
-            recvSeq = peerSendSeq;
+            this.clientSendSeq = clientSendSeq;
         }
         // 根据客户端确认的序号,清理缓存
-        trimCache(peerConfirmRecvSeq);
+        trimCache(confirmServerSendSeq);
     }
 
     /**

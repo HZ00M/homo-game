@@ -24,7 +24,7 @@ public class JsonRouterHandler implements RouterHandler {
     @Autowired
     HomoSerializationProcessor homoSerializationProcessor;
     @Override
-    public Homo<Void> handler(HandlerContext context) {
+    public Homo<Object> handler(HandlerContext context) {
         String msgContent = context.getParam(RouterHandler.PARAM_MSG,String.class);
         String msgId = context.getParam(RouterHandler.PARAM_MSG_ID,String.class);
         String srcService = context.getParam(RouterHandler.PARAM_SRC_SERVICE,String.class);
@@ -35,7 +35,7 @@ public class JsonRouterHandler implements RouterHandler {
             String formatStatefulName = ServiceUtil.formatStatefulName(srcService, podIndex);
             grpcAgentClient = rpcClientMgr.getGrpcAgentClient(formatStatefulName, true);
         }else {
-            grpcAgentClient = rpcClientMgr.getGrpcServerlessAgentClient(srcService);
+            grpcAgentClient = rpcClientMgr.getGrpcAgentClient(srcService);
         }
         JsonRpcContent rpcContent = JsonRpcContent.builder().data(msgContent).build();
         return grpcAgentClient.rpcCall(msgId, rpcContent)
@@ -43,8 +43,8 @@ public class JsonRouterHandler implements RouterHandler {
                     Tuple2<String, JsonRpcContent> tuple2 = (Tuple2<String, JsonRpcContent>) ret;
                     String retMsgId = tuple2.getT1();
                     JsonRpcContent retJsonContent = tuple2.getT2();
-                    context.success(retJsonContent.getData());
-                    return Homo.resultVoid();
+                    context.promiseResult(retJsonContent.getData());
+                    return context.handler(context);
                 });
     }
 }

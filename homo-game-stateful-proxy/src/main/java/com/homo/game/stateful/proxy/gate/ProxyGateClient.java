@@ -1,10 +1,10 @@
 package com.homo.game.stateful.proxy.gate;
 
 import com.google.protobuf.ByteString;
-import com.homo.core.facade.gate.GateMessage;
 import com.homo.core.facade.gate.GateMessageHeader;
 import com.homo.core.gate.DefaultGateClient;
 import com.homo.core.gate.DefaultGateServer;
+import com.homo.core.utils.concurrent.queue.CallQueue;
 import com.homo.core.utils.concurrent.queue.CallQueueMgr;
 import com.homo.core.utils.concurrent.queue.CallQueueProducer;
 import com.homo.core.utils.concurrent.queue.IdCallQueue;
@@ -17,43 +17,53 @@ import com.homo.game.stateful.proxy.config.StatefulProxyProperties;
 import com.homo.game.stateful.proxy.pojo.CacheMsg;
 import io.homo.proto.client.*;
 import javafx.util.Pair;
-import lombok.Getter;
+import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
+/**
+ * 提供对断线重连的支持
+ */
 @Slf4j
+@ToString(exclude = {"queue", "reconnectBox", "delayDestroyTask", "statefulProxyProperties"})
 public class ProxyGateClient extends DefaultGateClient implements CallQueueProducer {
-    @Getter
     public String uid;
-    @Getter
     public String channelId;
-    @Getter
-    public State state = State.INIT;
+    private State state = State.INIT;
     public short sessionId;
-    public short sendSeqBeforeLogin = GateMessageHeader.DEFAULT_SEND_SEQ;
-    public short confirmSeqBeforeLogin = GateMessageHeader.DEFAULT_RECV_SEQ;
-    IdCallQueue queue = new IdCallQueue("gateClientQueue", 1000 * 11, IdCallQueue.DropStrategy.DROP_CURRENT_TASK);
-    ReconnectBox reconnectBox;
-    ReconnectConfig reconnectConfig;
+    public short clientSendSeqBeforeLogin = GateMessageHeader.DEFAULT_SEND_SEQ;
+    public short confirmSeverSendSeqBeforeLogin = GateMessageHeader.DEFAULT_RECV_SEQ;
+    IdCallQueue queue = new IdCallQueue("gateClientQueue", 1000 * 11, IdCallQueue.DropStrategy.DROP_CURRENT_TASK, 0);
+    ReconnectBox reconnectBox = new ReconnectBox();
     //重连后的目的proxy的podIndex
     public int transferDestPod = -1;
-    public static Map<String, ReconnectBox> msg_cache = new HashMap<>();
-    StatefulProxyProperties statefulProxyProperties = GetBeanUtil.getBean(StatefulProxyProperties.class);
-    private HomoTimerTask timerTask;
+    //    public static Map<String, ReconnectBox> msg_cache = new HashMap<>();
+    private StatefulProxyProperties statefulProxyProperties = GetBeanUtil.getBean(StatefulProxyProperties.class);
+    private HomoTimerTask delayDestroyTask;
 
     public ProxyGateClient(DefaultGateServer gateServer, String name) {
         super(gateServer, name);
     }
 
-    public void init() {
-        reconnectConfig = GetBeanUtil.getBean(ReconnectConfig.class);
-        reconnectBox = msg_cache.computeIfAbsent(uid, k -> new ReconnectBox(uid, reconnectConfig));
-        reconnectBox.clear();
-        setState(ProxyGateClient.State.LOGIN);
+    public void newLogin(String uid) {
+        this.reconnectBox.init();
+        this.state = State.LOGIN;
+        this.uid = uid;
+        this.reconnectBox.setUid(uid);
+        this.reconnectBox.updateMsgSeq(clientSendSeqBeforeLogin, confirmSeverSendSeqBeforeLogin);
+        ProxyGateClientMgr.bindGate(uid, this);//必须登陆完成后调用  因为可能有其他登陆的gateClient产生，必须保证绑定的唯一性
+        log.info("newLogin uid {} client {} ", uid, this);
+    }
 
+    public void reconnect(String uid) {
+        reconnectBox.init();
+        this.uid = uid;
+        this.state = State.RECONNECTED;
+        this.reconnectBox.setUid(uid);
+        this.reconnectBox.updateMsgSeq(clientSendSeqBeforeLogin, confirmSeverSendSeqBeforeLogin);
+        ProxyGateClientMgr.bindGate(uid, this);//必须登陆完成后调用  因为可能有其他登陆的gateClient产生，必须保证绑定的唯一性
+        log.info("reconnect uid {} client {} ", uid, this);
     }
 
     public Homo<Boolean> toClient(Integer podId, ToClientReq req) {
@@ -63,7 +73,7 @@ public class ProxyGateClient extends DefaultGateClient implements CallQueueProdu
         return Homo.queue(queue, () -> {
             if (isLogin()) {
                 //在线状态直接发送消息
-                sendToClient(msg.toByteArray());
+                sendToClient(req.getMsgType(), msg.toByteArray()).start();
                 //防止发送失败
                 cacheMsg(msgId, msgContent.toByteArray());
             } else if (state == State.INACTIVE) {
@@ -81,9 +91,27 @@ public class ProxyGateClient extends DefaultGateClient implements CallQueueProdu
         });
     }
 
-    public void updateMsgSeq(short beforePeerSendSeq, short beforePeerConfirmSeq) {
-        reconnectBox.updateMsgSeq(beforePeerSendSeq, beforePeerConfirmSeq);
+//    public void updateMsgSeq(short beforePeerSendSeq, short beforePeerConfirmSeq, Msg msg) {
+//        if (msg != null) {
+//            cacheMsg(msg.getMsgId(), msg.toByteArray());
+//        }
+//        reconnectBox.updateMsgSeq(beforePeerSendSeq, beforePeerConfirmSeq);
+//    }
+
+
+    @Override
+    public Homo<Boolean> sendToClient(String msgId, byte[] msg) {
+        return super.sendToClient(msgId, msg, sessionId, getInnerSendSeq(), getClientSendSeq());
     }
+
+    public Short getClientSendSeq() {
+        return reconnectBox.clientSendSeq;
+    }
+
+    public Short getInnerSendSeq() {
+        return reconnectBox.innerSendSeq;
+    }
+
 
     @Override
     public Integer getQueueId() {
@@ -99,7 +127,8 @@ public class ProxyGateClient extends DefaultGateClient implements CallQueueProdu
     }
 
 
-    public void setState(State state) {
+    public void setState(State state, String reason) {
+        log.info("setState reason {}  uid {} beforeState {} state {} ", reason, uid, this.state, state);
         this.state = state;
     }
 
@@ -108,69 +137,102 @@ public class ProxyGateClient extends DefaultGateClient implements CallQueueProdu
         Integer clientConfirmSeq = syncInfo.getRecReq();
         int clientCount = syncInfo.getCount();
         log.info("transfer uid {} fromPodId {} cacheStartReq {} clientConfirmSeq {} clientCount {}", uid, fromPodId, cacheStartReq, clientConfirmSeq, clientCount);
-        Pair<Boolean, List<CacheMsg>> transferMsg = reconnectBox.transfer(clientConfirmSeq, cacheStartReq, clientCount);
-        if (!transferMsg.getKey().equals(true)) {
-            return TransferCacheResp.newBuilder().build();
+        if (state == State.LOGIN || state == State.RECONNECTED || state == State.INACTIVE) {
+            Pair<Boolean, List<CacheMsg>> transferMsg = reconnectBox.transfer(clientConfirmSeq, cacheStartReq, clientCount);
+            if (!transferMsg.getKey().equals(true)) {
+                return TransferCacheResp.newBuilder().build();
+            }
+            TransferCacheResp.Builder newBuilder = TransferCacheResp.newBuilder();
+            for (CacheMsg cacheMsg : transferMsg.getValue()) {
+                //重构消息
+                TransferCacheResp.SyncMsg syncMsg = TransferCacheResp.SyncMsg
+                        .newBuilder()
+                        .setMsgId(cacheMsg.getMsgId())
+                        .setMsg(ByteString.copyFrom(cacheMsg.getBytes()))
+                        .setSendSeq(cacheMsg.getInnerSendSeq())
+                        .setRecReq(cacheMsg.getClientSendReq())
+                        .setSessionId(cacheMsg.getSessionId())
+                        .build();
+                newBuilder.addSyncMsgList(syncMsg);
+            }
+            newBuilder.setSendSeq(getInnerSendSeq());
+            newBuilder.setRecvSeq(getClientSendSeq());
+            //改变状态
+            transferDestPod = fromPodId;
+            state = ProxyGateClient.State.TRANSFERRED;
+            return newBuilder.build();
+        } else {
+            return TransferCacheResp.newBuilder().setErrorCode(TransferCacheResp.ErrorType.ERROR).build();
         }
-        TransferCacheResp.Builder newBuilder = TransferCacheResp.newBuilder();
-        for (CacheMsg cacheMsg : transferMsg.getValue()) {
-            TransferCacheResp.SyncMsg syncMsg = TransferCacheResp.SyncMsg
-                    .newBuilder()
-                    .setMsgId(cacheMsg.getMsgId())
-                    .setMsg(ByteString.copyFrom(cacheMsg.getBytes()))
-                    .setSendSeq(cacheMsg.getSendSeq())
-                    .setRecReq(cacheMsg.getRecvReq())
-                    .setSessionId(cacheMsg.getSessionId())
-                    .build();
-            newBuilder.addSyncMsgList(syncMsg);
-        }
-        //改变状态
-        transferDestPod = fromPodId;
-        state = ProxyGateClient.State.TRANSFERRED;
-        return newBuilder.build();
     }
 
     public Homo<Boolean> kickPromise(boolean offlineNotice) {
+        log.info("kickPromise start uid {} offlineNotice {} state {}", uid, offlineNotice, state);
         if (state == State.CLOSED) {
             log.warn("uid {} already closed!", uid);
             return Homo.result(true);
         }
-        Homo<Boolean> promise;
-        if (offlineNotice) {
-            KickUserMsg kickUserMsg = KickUserMsg.newBuilder().setKickReason("kickPromise").build();
-            ToClientReq toClientReq = ToClientReq.newBuilder()
-                    .setClientId(uid)
-                    .setMsgType(KickUserMsg.class.getSimpleName())
-                    .setMsgContent(kickUserMsg.toByteString())
-                    .build();
-            promise = sendToClientComplete(toClientReq.toByteArray());
-        } else {
-            promise = Homo.result(true);
-        }
-        promise.justThen(() -> {
-            setState(State.CLOSED);
-            ProxyGateClientMgr.removeFromValid(uid);
-            try {
-                close();
-            } catch (Exception e) {
-                log.error("kickPromise close error uid:{} handlerState:{}", uid, getState(), e);
-            }
-            return Homo.result(true);
-        });
 
-        return promise;
+//        if (offlineNotice) {
+//            KickUserMsg kickUserMsg = KickUserMsg.newBuilder().setKickReason("kickPromise").build();
+//            ToClientReq toClientReq = ToClientReq.newBuilder()
+//                    .setClientId(uid)
+//                    .setMsgType(KickUserMsg.class.getSimpleName())
+//                    .setMsgContent(kickUserMsg.toByteString())
+//                    .build();
+//            sendToClientComplete(KickUserMsg.class.getSimpleName(), toClientReq.toByteArray()).start();
+//
+//        }
+        if (state == State.INACTIVE) {//掉线状态不需要断开端口连接
+            delayDestroyTask.cancel();
+        } else {
+            closeClient();
+        }
+        return Homo.result(true);
     }
 
-    public void updateReconnectInfo(short sendSeq, short recvSeq, short sessionId) {
-        this.sessionId = sessionId;//todo 待确认
+    public void closeClient() {
+        log.info("closeClient start uid {} name {}", uid, name());
+        try {
+            close();
+        } catch (Exception e) {
+            log.error("closeClient close error uid:{} handlerState:{}", uid, getState(), e);
+        }
+        log.info("closeClient success client {}", this);
+    }
+
+
+    public void syncMsgSeq(short clientSendSeq, short confirmServerSendSeq, short sessionId) {
+        this.sessionId = sessionId;
         if (isLogin()) {
-            updateMsgSeq(sendSeq, recvSeq);
+            reconnectBox.updateMsgSeq(clientSendSeq, confirmServerSendSeq);
+//            log.info("syncMsgSeq uid {}  clientSendSeq {} confirmServerSendSeq {}   " +
+//                            "reconnectBox.getClientSendSeq {} reconnectBox.getInnerSendSeq {}",
+//                    uid, clientSendSeq, confirmServerSendSeq, reconnectBox.getClientSendSeq(), reconnectBox.getInnerSendSeq());
         } else {
             //未登录时,记录下来,登录后再更新
-            sendSeqBeforeLogin = sendSeq >= 0 ? sendSeq : sendSeqBeforeLogin;
-            confirmSeqBeforeLogin = recvSeq >= 0 ? recvSeq : confirmSeqBeforeLogin;
+            clientSendSeqBeforeLogin = clientSendSeq >= 0 ? clientSendSeq : clientSendSeqBeforeLogin;
+            confirmSeverSendSeqBeforeLogin = confirmServerSendSeq >= 0 ? confirmServerSendSeq : confirmSeverSendSeqBeforeLogin;
+//            log.info("syncMsgSeq uid {} clientSendSeqBeforeLogin {} confirmSeverSendSeqBeforeLogin {} clientSendSeq {} confirmServerSendSeq {}   ",
+//                    uid, clientSendSeqBeforeLogin, confirmSeverSendSeqBeforeLogin, clientSendSeq, confirmServerSendSeq);
         }
+
     }
+
+//    public void updateReconnectInfo(short sendSeq, short recvSeq,String sessionId, Msg msg) {
+//        if (isLogin()) {
+//            if (msg != null) {
+//                cacheMsg(msg.getMsgId(), msg.toByteArray());
+//            }
+//            reconnectBox.updateMsgSeq(sendSeq, recvSeq);
+//        } else {
+//            //未登录时,记录下来,登录后再更新
+//            sendSeqBeforeLogin = sendSeq >= 0 ? sendSeq : sendSeqBeforeLogin;
+//            confirmSeqBeforeLogin = recvSeq >= 0 ? recvSeq : confirmSeqBeforeLogin;
+//            log.info("updateReconnectInfo no login yet clientName {} sendSeqBeforeLogin {} confirmSeqBeforeLogin {}", name(), sendSeqBeforeLogin, confirmSeqBeforeLogin);
+//            cacheMsg(msg.getMsgId(), msg.toByteArray());
+//        }
+//    }
 
 
     public enum State {
@@ -181,6 +243,7 @@ public class ProxyGateClient extends DefaultGateClient implements CallQueueProdu
         INACTIVE,//掉线状态
         CLOSED; //已经关闭
     }
+
 
     public boolean isLogin() {
         return state == State.LOGIN || state == State.RECONNECTED;
@@ -194,40 +257,66 @@ public class ProxyGateClient extends DefaultGateClient implements CallQueueProdu
     public Homo<Boolean> unRegisterClient(boolean offlineNotify, String reason) {
         if (state == State.INIT) {
             log.info("no user tcp close handler:{}", this);
-            state = State.CLOSED;
+            setState(State.CLOSED, "unRegisterClient");
             return Homo.result(true);
         }
         if (state == State.CLOSED || state == State.INACTIVE) {
             log.warn("unRegisterClient uid {} already closed!", uid);
             return Homo.result(true);
         }
-        ParameterMsg parameterMsg = ParameterMsg.newBuilder().setChannelId(channelId).setUserId(uid).build();
-        StateOfflineRequest offlineRequest = StateOfflineRequest.newBuilder().setReason(reason).setTime(System.currentTimeMillis()).build();
-        if (offlineNotify) {
-            for (String notifyService : statefulProxyProperties.getClientOfflineNotifyServiceSet()) {
-                //todo 通知服务操作
-            }
-        }
-        state = State.CLOSED;
-        ProxyGateClientMgr.removeFromValid(uid);
+//         todo 通知服务操作
+//        ParameterMsg parameterMsg = ParameterMsg.newBuilder().setChannelId(channelId).setUserId(uid).build();
+//        StateOfflineRequest offlineRequest = StateOfflineRequest.newBuilder().setReason(reason).setTime(System.currentTimeMillis()).build();
+//        if (offlineNotify) {
+//            for (String notifyService : statefulProxyProperties.getClientOfflineNotifyServiceSet()) {
+//
+//            }
+//        }
+        setState(State.CLOSED, "unRegisterClient");
+        ProxyGateClientMgr.unBindGate(uid, this);
+        log.info("unRegisterClient offlineNotify {} reason {} client {}", offlineNotify, reason, this);
         return Homo.result(true);
     }
 
     @Override
     public void onClose(String reason) {
-        log.info("GateClientImpl onClose reason {}", reason);
+        log.info("GateClientImpl onClose reason {} clientHashCode {}", reason, this.hashCode());
         if (isLogin()) {
-            state = State.INACTIVE;
-            timerTask = HomoTimerMgr.getInstance().once(() -> {
+            setState(State.INACTIVE, "onClose " + reason);
+            CallQueue currentCallQueue = CallQueueMgr.getInstance().getQueueByUid(getUid());
+            delayDestroyTask = HomoTimerMgr.getInstance().once("gateClientClose_" + getUid(), currentCallQueue, () -> {
                         Homo.queue(queue, () -> {
-                            log.info("开始销毁 uid {} handlerState {}", uid, state);
+                            log.info("delayDestroyTask run uid {} handlerState {} clientHashCode {}", uid, state, this.hashCode());
                             return unRegisterClient(true, reason);
                         }, null).start();
                     },
-                    statefulProxyProperties.getClientOfflineDelayCloseSecond() * 1000);
+                    statefulProxyProperties.getClientCloseRemoveDelayMillisecond() * 1000);
 
         } else {
+            //未登陆不会有断线重连需求  直接移除绑定
+            setState(State.CLOSED, reason);
             unRegisterClient(false, reason).start();
         }
+    }
+
+    public String getUid() {
+        return uid;
+    }
+
+    public void setUid(String uid) {
+        this.uid = uid;
+        log.info("gateClient setUid userId {}", uid);
+    }
+
+    public String getChannelId() {
+        return channelId;
+    }
+
+    public void setChannelId(String channelId) {
+        this.channelId = channelId;
+    }
+
+    public State getState() {
+        return state;
     }
 }

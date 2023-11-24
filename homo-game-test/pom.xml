@@ -83,6 +83,11 @@
             </dependency>
             <dependency>
                 <groupId>com.homo</groupId>
+                <artifactId>homo-game-login-facade</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.homo</groupId>
                 <artifactId>homo-game-stateful-proxy-facade</artifactId>
                 <version>${revision}</version>
             </dependency>

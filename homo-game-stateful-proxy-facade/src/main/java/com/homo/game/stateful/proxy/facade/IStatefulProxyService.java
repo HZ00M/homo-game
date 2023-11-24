@@ -1,11 +1,13 @@
 package com.homo.game.stateful.proxy.facade;
 
+import com.homo.core.facade.rpc.RpcHandler;
 import com.homo.core.facade.rpc.RpcType;
 import com.homo.core.facade.service.ServiceExport;
 import com.homo.core.utils.rector.Homo;
 import io.homo.proto.client.*;
 
-@ServiceExport(tagName = "stateful-proxy:31666",isMainServer = true,isStateful = true,driverType = RpcType.grpc)
+@ServiceExport(tagName = "stateful-proxy-service:31666",isMainServer = true,isStateful = true,driverType = RpcType.grpc)
+@RpcHandler
 public interface IStatefulProxyService {
 //    Homo<LoginMsgResp> login(LoginMsgReq req);
 //    Homo<LoginAndSyncResp> reconnect(LoginAndSyncReq req);
@@ -16,7 +18,7 @@ public interface IStatefulProxyService {
      * @param req
      * @return
      */
-    Homo<ToClientResp> sendToClient(Integer podId, ToClientReq req);
+    Homo<ToClientResp> sendToClient(Integer podId, ParameterMsg parameterMsg,ToClientReq req);
 
     /**
      * 将内部消息通过Proxy发往客户端，带回调
@@ -24,7 +26,7 @@ public interface IStatefulProxyService {
      * @param req
      * @return
      */
-    Homo<ToClientResp> sendToClientComplete(Integer podId, ToClientReq req);
+    Homo<ToClientResp> sendToClientComplete(Integer podId,ParameterMsg parameterMsg, ToClientReq req);
 
 
     /**

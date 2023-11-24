@@ -18,7 +18,7 @@ public class CheckVersionHandler implements RouterHandler {
     }
 
     @Override
-    public Homo<Void> handler(HandlerContext context) {
+    public Homo<Object> handler(HandlerContext context) {
         return context.handler(context);
     }
 }

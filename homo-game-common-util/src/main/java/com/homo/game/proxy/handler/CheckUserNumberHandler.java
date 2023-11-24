@@ -49,7 +49,7 @@ public class CheckUserNumberHandler implements RouterHandler, ServiceModule {
     }
 
     @Override
-    public Homo<Void> handler(HandlerContext context) {
+    public Homo<Object> handler(HandlerContext context) {
         String msgId = context.getParam(RouterHandler.PARAM_MSG_ID,String.class);
         String srcService = context.getParam(RouterHandler.PARAM_SRC_SERVICE,String.class);
         String appId = context.getParam(RouterHandler.PARAM_APP_ID,String.class);
@@ -59,8 +59,7 @@ public class CheckUserNumberHandler implements RouterHandler, ServiceModule {
         if (proxyHandlerProperties.limitEnable && !proxyHandlerProperties.userWhiteList.contains(userId)){
             if (serverPlayerNumber >= proxyHandlerProperties.getLimitNum()){
                 Tuple2<Boolean, String> tuples = Tuples.of(false, "CheckUserNumberHandler check fail");
-                context.success(tuples);
-                return Homo.resultVoid();
+                context.promiseResult(tuples);
             }
             return context.handler(context);
         }else {

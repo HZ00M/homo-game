@@ -23,6 +23,7 @@ public class HandlerContext implements RouterHandler {
     private int index;
     private HomoSink sink;
     private Map<String, Object> contextMap = new HashMap<>();
+    private Object result;
 
     public HandlerContext(HomoSink sink, List<RouterHandler> filters) {
         this.sink = sink;
@@ -61,7 +62,6 @@ public class HandlerContext implements RouterHandler {
     }
 
 
-
     public HandlerContext sort() {
         this.filters.sort(Comparator.comparing(RouterHandler::order));
         return this;
@@ -76,6 +76,10 @@ public class HandlerContext implements RouterHandler {
         return this;
     }
 
+    public void promiseResult(Object obj) {
+        this.result = obj;
+    }
+
     public void success(Object obj) {
         sink.success(obj);
     }
@@ -84,15 +88,18 @@ public class HandlerContext implements RouterHandler {
         sink.error(throwable);
     }
 
-    public void process() {
-        this.handler(this).start();
+    public Homo<Object> process() {
+        return this.handler(this);
     }
 
     @Override
-    public Homo<Void> handler(HandlerContext context) {
+    public Homo<Object> handler(HandlerContext context) {
+        if (result != null) {
+            return Homo.result(result);
+        }
         if (index == filters.size()) {
             log.info("FilterChain Filter done");
-            return Homo.resultVoid();
+            return Homo.result(result);
         }
         RouterHandler handler = filters.get(index);
         index++;

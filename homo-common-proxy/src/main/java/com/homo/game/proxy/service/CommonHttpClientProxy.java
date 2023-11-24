@@ -15,6 +15,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
 import com.google.protobuf.ByteString;
 import com.homo.core.rpc.http.dto.ResponseMsg;
+import com.homo.core.utils.exception.HomoError;
 import com.homo.game.proxy.config.CommonProxyProperties;
 import com.homo.game.proxy.dto.HeaderParam;
 import com.homo.game.proxy.dto.ProxyParam;
@@ -275,15 +276,15 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                     JsonRpcContent rpcContent = JsonRpcContent.builder().data(paramArray.toJSONString()).build();
                     String serverPort = commonProxyProperties.getServerPortMap().get(srcService);
                     String serviceName = srcService + ":" + serverPort;
-                    RpcAgentClient agentClient = rpcClientMgr.getGrpcServerlessAgentClient(serviceName);
+                    RpcAgentClient agentClient = rpcClientMgr.getGrpcAgentClient(serviceName);
                     Homo<String> homo = agentClient.rpcCall(msgId, rpcContent)
                             .nextDo(ret -> {
                                 Tuple2<String, JsonRpcContent> retTuple = (Tuple2<String, JsonRpcContent>) ret;
                                 String retData = retTuple.getT2().getData();
                                 log.info("proxyCall serviceName {} msgId {} rpcContent {} jsonRet {}", serviceName, msgId, rpcContent, ret);
                                 ResponseMsg responseMsg = ResponseMsg.builder()
-                                        .code(HomoCommonError.success.getCode())
-                                        .codeDesc(HomoCommonError.success.message())
+                                        .code(HomoError.success.getCode())
+                                        .codeDesc(HomoError.success.message())
                                         .msgId(msgId)
                                         .msgContent(retData)
                                         .build();
@@ -334,15 +335,15 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                     String serverPort = commonProxyProperties.getServerPortMap().get(srcService);
                     String serviceName = srcService + ":" + serverPort;
                     ByteRpcContent rpcContent = ByteRpcContent.builder().data(params).build();
-                    RpcAgentClient agentClient = rpcClientMgr.getGrpcServerlessAgentClient(serviceName);
+                    RpcAgentClient agentClient = rpcClientMgr.getGrpcAgentClient(serviceName);
                     Homo<Msg> homo = agentClient.rpcCall(msgId, rpcContent)
                             .nextDo(ret -> {
                                 Tuple2<String, ByteRpcContent> retTuple = (Tuple2<String, ByteRpcContent>) ret;
                                 byte[][] data = retTuple.getT2().getData();
                                 log.info("proxyCall serviceName {} msgId {} ", serviceName, msgId);
                                 Msg responseMsg = Msg.newBuilder()
-                                        .setCode(HomoCommonError.success.getCode())
-                                        .setCodeDesc(HomoCommonError.success.message())
+                                        .setCode(HomoError.success.getCode())
+                                        .setCodeDesc(HomoError.success.message())
                                         .setMsgId(msgId)
                                         .setMsgContent(ByteString.copyFrom(data[0]))
                                         .build();
@@ -394,15 +395,15 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
             //把消息头添加到最后一个参数
             paramArray.add(headerParam);
             JsonRpcContent rpcContent = JsonRpcContent.builder().data(paramArray.toJSONString()).build();
-            RpcAgentClient agentClient = rpcClientMgr.getGrpcServerlessAgentClient(serviceName);
+            RpcAgentClient agentClient = rpcClientMgr.getGrpcAgentClient(serviceName);
             Homo<String> homo = agentClient.rpcCall(msgId, rpcContent)
                     .nextDo(ret -> {
                         Tuple2<String, JsonRpcContent> retTuple = (Tuple2<String, JsonRpcContent>) ret;
                         String retData = retTuple.getT2().getData();
                         log.info("proxyCall serviceName {} msgId {} rpcContent {} jsonRet {}", serviceName, msgId, rpcContent, retData);
                         ResponseMsg responseMsg = ResponseMsg.builder()
-                                .code(HomoCommonError.success.getCode())
-                                .codeDesc(HomoCommonError.success.message())
+                                .code(HomoError.success.getCode())
+                                .codeDesc(HomoError.success.message())
                                 .msgId(msgId)
                                 .msgContent(retData)
                                 .build();
@@ -464,7 +465,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
             String serverPort = commonProxyProperties.getServerPortMap().get(srcService);
             String serviceName = srcService + ":" + serverPort;
             ByteRpcContent rpcContent = ByteRpcContent.builder().data(params).build();
-            RpcAgentClient agentClient = rpcClientMgr.getGrpcServerlessAgentClient(serviceName);
+            RpcAgentClient agentClient = rpcClientMgr.getGrpcAgentClient(serviceName);
             Homo<Msg> homo = agentClient.rpcCall(msgId, rpcContent)
                     .nextDo(ret -> {
                         Tuple2<String, ByteRpcContent> retTuple = (Tuple2<String, ByteRpcContent>) ret;
@@ -472,8 +473,8 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                         log.info("clientPbMsgCheckSign ret srcService {} msgId {} userId {} token {} appId {} channelId {} clientSign {}",
                                 srcService, msgId, userId, token, appId, channelId, clientSign);
                         Msg responseMsg = Msg.newBuilder()
-                                .setCode(HomoCommonError.success.getCode())
-                                .setCodeDesc(HomoCommonError.success.message())
+                                .setCode(HomoError.success.getCode())
+                                .setCodeDesc(HomoError.success.message())
                                 .setMsgId(msgId)
                                 .setMsgContent(ByteString.copyFrom(data[0]))
                                 .build();

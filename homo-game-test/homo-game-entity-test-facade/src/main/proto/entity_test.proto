@@ -23,4 +23,7 @@ message TestRsp{
   bytes msgContent   = 4;   //业务返回的结构
 }
 
-
+message InnerSendMsg{
+  int32 code         = 1;   //转发消息的结果，1代表成功，其他表示失败
+  string msg          = 2;   //失败原因，code不等于1时msg字段的值有意义
+}

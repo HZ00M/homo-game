@@ -40,13 +40,6 @@ message ToClientReq {
 }
 //有状态proxy错误码
 message ToClientResp {
-    enum ErrorType //枚举消息类型
-    {
-        OK = 0;
-        ERROR = 1;
-        USER_NOT_FOUND = 2;
-        POD_ID_IS_NULL = 3;
-    }
     int32 errorCode = 1;
     string errorMsg = 2;
 }

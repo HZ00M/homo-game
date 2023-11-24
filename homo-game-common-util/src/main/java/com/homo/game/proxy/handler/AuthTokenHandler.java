@@ -1,6 +1,7 @@
 package com.homo.game.proxy.handler;
 
 import com.alibaba.fastjson.JSONObject;
+import com.homo.core.utils.concurrent.queue.CallQueueMgr;
 import com.homo.core.utils.secret.EncryptUtils;
 import com.homo.game.login.facade.IGrpcLoginService;
 import com.homo.game.login.proto.Auth;
@@ -39,7 +40,7 @@ public class AuthTokenHandler implements RouterHandler {
     }
 
     @Override
-    public Homo<Void> handler(HandlerContext context) {
+    public Homo<Object> handler(HandlerContext context) {
         String appId = context.getParam(RouterHandler.PARAM_APP_ID, String.class);
         String channelId = context.getParam(RouterHandler.PARAM_CHANNEL_ID, String.class);
         String userId = context.getParam(RouterHandler.PARAM_USER_ID, String.class);
@@ -56,13 +57,14 @@ public class AuthTokenHandler implements RouterHandler {
                                 if (true) {//todo 简化逻辑  认证成功即算一人在线
                                     userNumberHandler.incrServerPlayerNumber();
                                 }
-                                return context.handler(context);
+                                Tuple2<Boolean, String> tuples = Tuples.of(true, "AuthTokenHandler success"); //todo 需要优化代码逻辑
+                                context.promiseResult(tuples);
+
                             } else {
                                 Tuple2<Boolean, String> tuples = Tuples.of(false, "AuthTokenHandler check fail");
-                                context.success(tuples);
-
+                                context.promiseResult(tuples);
                             }
-                            return Homo.resultVoid();
+                            return context.handler(context);
                         }
                 );
     }
@@ -70,10 +72,17 @@ public class AuthTokenHandler implements RouterHandler {
     public Homo<Boolean> checkToken(String appId, String channelId, String userId, String token) {
         ParameterMsg parameterMsg = ParameterMsg.newBuilder().setChannelId(channelId).setUserId(userId).build();
         Auth auth = Auth.newBuilder().setChannelId(channelId).setUserId(userId).setToken(token).build();
-        return loginService.auth(parameterMsg, auth)
-                .nextDo(ret -> {
-                    return Homo.result(ret.checkSuccess());
-                })
+        return Homo.result(true)
+//                .switchThread(CallQueueMgr.getInstance().makeQueueId(userId.hashCode()))//todo 待验证
+                .nextDo(res -> {
+                            log.info("checkToken appId {} channelId {} userId {} token {}", appId, channelId, userId, token);
+                            return loginService.auth(-1,parameterMsg, auth)
+                                    .nextDo(ret -> {
+                                        log.info("checkToken auth userId {} ret {}", userId, ret);
+                                        return Homo.result(ret.checkSuccess());
+                                    });
+                        }
+                )
                 ;
     }
 

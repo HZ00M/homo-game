@@ -10,7 +10,8 @@ public class ProxyGateServer extends DefaultGateServer {
 
     @Override
     public ProxyGateClient newClient(String addr, int port) {
-        return new ProxyGateClient(this, addr + ":" + port);
+        ProxyGateClient gateClient = new ProxyGateClient(this, addr + ":" + port);
+        return gateClient;
     }
 
 }
