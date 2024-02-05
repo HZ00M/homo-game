@@ -1,4 +1,4 @@
-package com.homo.game.persitent;
+package com.homo.game.persistent;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;

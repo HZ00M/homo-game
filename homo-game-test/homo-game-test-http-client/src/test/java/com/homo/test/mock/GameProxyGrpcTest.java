@@ -52,7 +52,7 @@ public class GameProxyGrpcTest {
      * }
      * }
      */
-    public static String GAME_PROXY_URL = "http://http-client-proxy:31506/";
+    public static String GAME_PROXY_URL = "http://homo-game-proxy:31506/";
     public static HashMap<String, String> frameHeader;
 
     static {

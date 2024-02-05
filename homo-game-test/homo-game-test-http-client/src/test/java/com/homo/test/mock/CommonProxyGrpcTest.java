@@ -47,7 +47,7 @@ public class CommonProxyGrpcTest {
      *     Homo<HttpTestRsp> protoPostTest1(HttpTestReq req);
      * }
      */
-    public static String COMMON_PROXY_URL = "http://common-http-proxy:33306/";
+    public static String COMMON_PROXY_URL = "http://homo-common-proxy:33306/";
     public static HashMap<String, String> frameHeader;
 
     static {

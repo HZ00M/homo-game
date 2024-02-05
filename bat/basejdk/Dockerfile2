@@ -1,0 +1,21 @@
+FROM openjdk:8
+#想要一个openjdk8做基底的镜像，包含mvn并配置镜像仓库地址,Arthas，以/tmp作为工作目录，并在/tmp下创建一个health文件,设置java和mvn的环境变量
+# 设置镜像仓库地址
+RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list && \
+    apt-get update && \
+    apt-get install -y maven
+
+# 配置Arthas
+RUN wget -O /tmp/arthas.tar.gz https://arthas.aliyun.com/download/latest_version?mirror=aliyun && \
+    tar zxvf /tmp/arthas.tar.gz -C /opt && \
+    rm /tmp/arthas.tar.gz
+
+# 设置工作目录并创建文件
+WORKDIR /tmp
+RUN touch health
+
+# 设置Java和Maven环境变量
+ENV JAVA_HOME=/usr/local/openjdk-8
+ENV M2_HOME=/usr/share/maven
+ENV MAVEN_HOME=/usr/share/maven
+ENV PATH=${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${PATH}

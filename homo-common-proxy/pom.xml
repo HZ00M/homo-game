@@ -26,11 +26,6 @@
             <groupId>com.homo</groupId>
             <artifactId>homo-game-common-util</artifactId>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>com.alibaba.cloud</groupId>-->
-<!--            <artifactId>spring-cloud-starter-alibaba-sentinel</artifactId>-->
-<!--            <version>2021.0.4.0</version>-->
-<!--        </dependency>-->
 
         <dependency>
             <groupId>com.alibaba.csp</groupId>
@@ -61,4 +56,37 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring.boot.plugin}</version>  <!-- 替换为你想要使用的版本号 -->
+                <configuration>
+                    <mainClass>com.homo.game.proxy.CommonProxyApplication</mainClass>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <!-- 在 Maven 构建的某个阶段执行 Spring Boot 应用程序 -->
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.homo</groupId>
+                <artifactId>homo-maven-plugin</artifactId>
+                <version>${homo.core.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>homoBuild</goal>
+                            <goal>homoClean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

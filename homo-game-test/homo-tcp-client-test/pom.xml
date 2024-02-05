@@ -39,4 +39,24 @@
             <artifactId>homo-game-entity-test-facade</artifactId>
         </dependency>
     </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring.boot.plugin}</version>  <!-- 替换为你想要使用的版本号 -->
+                <configuration>
+                    <mainClass>com.homo.tcp.client.GameStatefulProxyTestApplication</mainClass>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <!-- 在 Maven 构建的某个阶段执行 Spring Boot 应用程序 -->
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

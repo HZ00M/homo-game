@@ -52,7 +52,7 @@ public class CommonProxyHttpForwardTest {
      * Homo<HttpTestRsp> protoPostTest(HttpTestReq req, ClientRouterHeader header);
      * }
      */
-    public static String COMMON_PROXY_URL = "http://common-http-proxy:33306/httpForward/";
+    public static String COMMON_PROXY_URL = "http://homo-common-proxy:33306/httpForward/";
     public static HashMap<String, String> frameHeader;
     public static String token = "token123";
     public static String userId = "20001_123";

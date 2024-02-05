@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.homo</groupId>
         <artifactId>homo-core</artifactId>
-        <version>1.0.0.0</version>
+        <version>1.0.0.4</version>
     </parent>
 
     <artifactId>homo-game</artifactId>
@@ -14,11 +14,12 @@
     <version>${revision}</version>
 
     <properties>
-        <!--        <homo.core.version>1.0</homo.core.version>-->
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <sentinel.version>1.8.3</sentinel.version>
-        <revision>1.0</revision>
+        <revision>1.0.0.2</revision>
+        <spring.boot.plugin>2.5.4</spring.boot.plugin>
+        <homo.core.version>1.0.0.4</homo.core.version>
     </properties>
 
     <modules>
@@ -145,6 +146,7 @@
                 <artifactId>sonar-maven-plugin</artifactId>
                 <version>3.6.0.1398</version>
             </plugin>
+
         </plugins>
     </build>
 </project>

@@ -2,7 +2,7 @@ package com.homo.game.persistent.test;
 
 import com.homo.core.facade.storege.dirty.DirtyDriver;
 import com.homo.core.facade.storege.landing.DBDataHolder;
-import com.homo.game.persitent.PersistentApplication;
+import com.homo.game.persistent.PersistentApplication;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
