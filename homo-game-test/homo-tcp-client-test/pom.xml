@@ -38,6 +38,11 @@
             <groupId>com.homo</groupId>
             <artifactId>homo-game-entity-test-facade</artifactId>
         </dependency>
+                <dependency>
+                    <groupId>com.homo</groupId>
+                    <artifactId>homo-maven-plugin</artifactId>
+                    <scope>test</scope>
+                </dependency>
     </dependencies>
     <build>
         <plugins>

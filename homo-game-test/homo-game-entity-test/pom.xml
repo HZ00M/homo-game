@@ -29,11 +29,7 @@
             <groupId>com.homo</groupId>
             <artifactId>homo-game-stateful-proxy-facade</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.homo</groupId>
-            <artifactId>homo-maven-plugin</artifactId>
-            <scope>test</scope>
-        </dependency>
+
     </dependencies>
     <build>
         <plugins>
