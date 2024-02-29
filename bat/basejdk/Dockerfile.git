@@ -1,3 +1,0 @@
-from default.registry.tke-syyx.com/syyx-tpf/tpf-java-base-8:1.0.14-git1
-COPY jmx_prometheus_javaagent-0.20.0.jar /jmx-prometheus/
-COPY config.yaml /jmx-prometheus/
