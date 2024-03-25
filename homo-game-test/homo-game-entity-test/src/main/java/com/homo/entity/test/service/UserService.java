@@ -20,7 +20,7 @@ public class UserService extends BaseService implements IUserService {
     AbilityEntityMgr abilityEntityMgr;
 
     @Override
-    public void postInit() {
+    public void preServerInit() {
         abilityEntityMgr.registerEntityNotFoundProcess(UserEntity.class, ((aClass, id) -> {
             log.info("createEntityPromise aClass {} id {}",aClass,id);
             return abilityEntityMgr.createEntityPromise(aClass, id);

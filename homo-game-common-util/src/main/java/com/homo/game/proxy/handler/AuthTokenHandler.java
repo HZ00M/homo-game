@@ -57,12 +57,11 @@ public class AuthTokenHandler implements RouterHandler {
                                 if (true) {//todo 简化逻辑  认证成功即算一人在线
                                     userNumberHandler.incrServerPlayerNumber();
                                 }
-                                Tuple2<Boolean, String> tuples = Tuples.of(true, "AuthTokenHandler success"); //todo 需要优化代码逻辑
-                                context.promiseResult(tuples);
 
                             } else {
                                 Tuple2<Boolean, String> tuples = Tuples.of(false, "AuthTokenHandler check fail");
                                 context.promiseResult(tuples);
+
                             }
                             return context.handler(context);
                         }
@@ -72,11 +71,12 @@ public class AuthTokenHandler implements RouterHandler {
     public Homo<Boolean> checkToken(String appId, String channelId, String userId, String token) {
         ParameterMsg parameterMsg = ParameterMsg.newBuilder().setChannelId(channelId).setUserId(userId).build();
         Auth auth = Auth.newBuilder().setChannelId(channelId).setUserId(userId).setToken(token).build();
+        log.info("checkToken appId {} channelId {} userId {} token {}", appId, channelId, userId, token);
         return Homo.result(true)
 //                .switchThread(CallQueueMgr.getInstance().makeQueueId(userId.hashCode()))//todo 待验证
                 .nextDo(res -> {
                             log.info("checkToken appId {} channelId {} userId {} token {}", appId, channelId, userId, token);
-                            return loginService.auth(-1,parameterMsg, auth)
+                            return loginService.auth(-1, parameterMsg, auth)
                                     .nextDo(ret -> {
                                         log.info("checkToken auth userId {} ret {}", userId, ret);
                                         return Homo.result(ret.checkSuccess());

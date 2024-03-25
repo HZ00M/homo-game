@@ -27,7 +27,7 @@ public class StatefulProxyService extends BaseService implements IStatefulProxyS
     @Autowired
     private StatefulProxyProperties statefulProxyProperties;
     @Override
-    public void postInit(){
+    public void preServerInit(){
 //        CallQueueMgr.registerPloy("toClient", new BiFunction<Event, Object, Integer>() {
 //            @Override
 //            public Integer apply(Event event, Object o) {

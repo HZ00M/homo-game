@@ -1,9 +1,9 @@
 package com.homo.game.proxy.handler;
 
+import com.homo.core.utils.module.RootModule;
+import com.homo.core.utils.module.ServerInfo;
+import com.homo.core.utils.module.ServiceModule;
 import com.homo.game.proxy.config.ProxyHandlerProperties;
-import com.homo.game.proxy.enums.HomoCommonError;
-import com.homo.core.facade.module.ServerInfo;
-import com.homo.core.facade.module.ServiceModule;
 import com.homo.core.storage.ByteStorage;
 import com.homo.core.utils.rector.Homo;
 import io.homo.proto.client.ClientRouterHeader;
@@ -23,9 +23,10 @@ public class CheckUserNumberHandler implements RouterHandler, ServiceModule {
     @Autowired
     private ByteStorage storage;
     private Long serverPlayerNumber = 0L;
-
+    @Autowired
+    private RootModule rootModule;
     @Override
-    public void init() {
+    public void afterAllModuleInit() {
         loadServerPlayerNumber();
     }
 
@@ -43,7 +44,7 @@ public class CheckUserNumberHandler implements RouterHandler, ServiceModule {
     }
 
     public void incrServerPlayerNumber() {
-        ServerInfo serverInfo = getServerInfo();
+        ServerInfo serverInfo = rootModule.getServerInfo();
         storage.incr(serverInfo.getAppId(), serverInfo.getRegionId(), "limit", "proxy", "userLimit")
                 .consumerValue(curNumber -> serverPlayerNumber = curNumber).start();
     }

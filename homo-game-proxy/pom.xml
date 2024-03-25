@@ -37,7 +37,7 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <version>${spring.boot.plugin}</version>  <!-- 替换为你想要使用的版本号 -->
                 <configuration>
-                    <mainClass>com.homo.game.proxy.handler.ProxyApplication</mainClass>
+                    <mainClass>com.homo.game.proxy.handler.GameProxyApplication</mainClass>
                 </configuration>
                 <executions>
                     <execution>

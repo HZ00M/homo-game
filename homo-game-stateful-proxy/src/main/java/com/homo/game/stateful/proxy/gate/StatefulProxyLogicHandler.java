@@ -11,9 +11,8 @@ import com.homo.core.rpc.base.serial.ByteRpcContent;
 import com.homo.core.rpc.base.service.ServiceMgr;
 import com.homo.core.rpc.client.RpcClientMgr;
 import com.homo.core.rpc.client.proxy.RpcProxyMgr;
-import com.homo.core.utils.concurrent.event.AbstractBaseEvent;
+import com.homo.core.utils.concurrent.event.AbstractTraceEvent;
 import com.homo.core.utils.concurrent.event.Event;
-import com.homo.core.utils.concurrent.lock.IdLocker;
 import com.homo.core.utils.concurrent.queue.CallQueueMgr;
 import com.homo.core.utils.concurrent.queue.IdCallQueue;
 import com.homo.core.utils.exception.HomoError;
@@ -35,7 +34,7 @@ import java.util.concurrent.Callable;
 
 @Component
 @Slf4j
-public class ProxyLogicHandler extends ProtoGateLogicHandler {
+public class StatefulProxyLogicHandler extends ProtoGateLogicHandler {
     @Autowired
     RouterHandlerManger routerHandlerMgr;
     @Autowired
@@ -55,8 +54,8 @@ public class ProxyLogicHandler extends ProtoGateLogicHandler {
     @Override
     public void doProcess(Msg msg, GateClient gateClient, GateMessageHeader header) throws Exception {
         ProxyGateClient proxyGateClient = (ProxyGateClient) gateClient;
-        if (msg.getMsgId().equals(LoginMsgReq.class.getSimpleName())||msg.getMsgId().equals(LoginAndSyncReq.class.getSimpleName())) {
-            CallQueueMgr.getInstance().addEvent(CallQueueMgr.frame_queue_id, new AbstractBaseEvent() {
+        if (msg.getMsgId().equals(LoginMsgReq.class.getSimpleName()) || msg.getMsgId().equals(LoginAndSyncReq.class.getSimpleName())) {
+            CallQueueMgr.getInstance().addEvent(CallQueueMgr.frame_queue_id, new AbstractTraceEvent() {
                 @Override
                 public void process() {
                     //切换到业务线程
@@ -68,11 +67,11 @@ public class ProxyLogicHandler extends ProtoGateLogicHandler {
                 }
             });
         } else {
-            if (proxyGateClient.uid==null){
-                log.warn("no login yet gateClient {} msgId {}",gateClient.name(),msg.getMsgId());
+            if (proxyGateClient.uid == null) {
+                log.warn("no login yet gateClient {} msgId {}", gateClient.name(), msg.getMsgId());
                 return;
             }
-            CallQueueMgr.getInstance().addEvent(CallQueueMgr.getInstance().choiceQueueIdBySeed(proxyGateClient.getUid().hashCode()), new AbstractBaseEvent() {
+            CallQueueMgr.getInstance().addEvent(CallQueueMgr.getInstance().choiceQueueIdBySeed(proxyGateClient.getUid().hashCode()), new AbstractTraceEvent() {
                 @Override
                 public void process() {
                     //切换到业务线程
@@ -122,36 +121,34 @@ public class ProxyLogicHandler extends ProtoGateLogicHandler {
         }
         CallQueueMgr callQueueMgr = CallQueueMgr.getInstance();
         Event event = () -> {
-            String tag = clientRouterMsg.getSrcService();
-            if (!StringUtil.isNullOrEmpty(clientRouterMsg.getEntityType())) {
-                tag = clientRouterMsg.getEntityType();
-            }
-            serviceStateMgr.getServiceInfo(tag)
-                    .nextDo(serviceInfo -> {
-                        ParameterMsg parameterMsg = ParameterMsg.newBuilder()
-                                .setUserId(clientRouterMsg.getUserId())
-                                .setChannelId(clientRouterMsg.getChannelId())
-                                .build();
-                        return routerHandlerMgr.create(null, "defaultRouterHandler")
-                                .router(clientRouterMsg)
-                                .setParam(RouterHandler.PARAM_SRC_SERVICE, serviceInfo.getServiceTag())
-                                .setParam(RouterHandler.PARAMETER_MSG, parameterMsg)
-                                .process()
-                                .nextDo(res -> {
-                                    Tuple2<String, ByteRpcContent> tuple = (Tuple2<String, ByteRpcContent>) res;
-                                    String msgId = tuple.getT1();
-                                    byte[][] data = tuple.getT2().getData();
-                                    Msg.Builder gateMsgResp = Msg.newBuilder();
-                                    Msg msg = gateMsgResp.setMsgId(tuple.getT1()).setMsgContent(ByteString.copyFrom(data[0])).build();
-                                    gateClient.sendToClient(msgId, msg.toByteArray());
-                                    log.info("processRouterMsg success userId {} msgId {}", gateClient.getUid(), msgId);
-                                    return Homo.result(true);
-                                });
-                    }).start();
+            Homo.warp(homoSink -> {
+                String tag = clientRouterMsg.getSrcService();
+                if (!StringUtil.isNullOrEmpty(clientRouterMsg.getEntityType())) {
+                    tag = clientRouterMsg.getEntityType();
+                }
+                serviceStateMgr.getServiceInfo(tag)
+                        .consumerValue(serviceInfo -> {
+                            ParameterMsg parameterMsg = ParameterMsg.newBuilder()
+                                    .setUserId(clientRouterMsg.getUserId())
+                                    .setChannelId(clientRouterMsg.getChannelId())
+                                    .build();
+                            routerHandlerMgr.create(homoSink, "defaultRouterHandler")
+                                    .router(clientRouterMsg)
+                                    .setParam(RouterHandler.PARAM_SRC_SERVICE, serviceInfo.getServiceTag())
+                                    .setParam(RouterHandler.PARAMETER_MSG, parameterMsg)
+                                    .process();
+                        });
+            }).consumerValue(ret -> {
+                Tuple2<String, ByteRpcContent> tuple = (Tuple2<String, ByteRpcContent>) ret;
+                String msgId = tuple.getT1();
+                byte[][] data = tuple.getT2().getData();
+                Msg.Builder gateMsgResp = Msg.newBuilder();
+                Msg msg = gateMsgResp.setMsgId(tuple.getT1()).setMsgContent(ByteString.copyFrom(data[0])).build();
+                gateClient.sendToClient(msgId, msg.toByteArray());
+                log.info("processRouterMsg success userId {} msgId {}", gateClient.getUid(), msgId);
+            });
         };
-
         callQueueMgr.addEvent(callQueueMgr.choiceQueueIdBySeed(gateClient.getQueueId()), event);//lambda表达式无法进出断点，移到上面
-
     }
 
 
@@ -219,13 +216,16 @@ public class ProxyLogicHandler extends ProtoGateLogicHandler {
                     public Homo<LoginMsgResp> call() throws Exception {
                         log.info("processLogin start userId {}", userId);
                         return Homo.warp(sink -> {
-                            routerHandlerMgr.create(sink, "checkParamMsgHandler", "checkWhiteListHandler", "checkUserNumberHandler",
-                                            "authTokenHandler")
-                                    .setParam(RouterHandler.PARAM_USER_ID, userId)
-                                    .setParam(RouterHandler.PARAM_MSG_ID, LoginMsgReq.class.getSimpleName())
-                                    .setParam(RouterHandler.PARAM_CHANNEL_ID, channelId)
-                                    .setParam(RouterHandler.PARAM_TOKEN, token)
-                                    .process()
+                            Homo.warp(checkSink -> {
+                                        routerHandlerMgr.create(checkSink, "checkParamMsgHandler", "checkWhiteListHandler", "checkUserNumberHandler",
+                                                        "authTokenHandler")
+                                                .setParam(RouterHandler.PARAM_USER_ID, userId)
+                                                .setParam(RouterHandler.PARAM_MSG_ID, LoginMsgReq.class.getSimpleName())
+                                                .setParam(RouterHandler.PARAM_CHANNEL_ID, channelId)
+                                                .setParam(RouterHandler.PARAM_TOKEN, token)
+                                                .process()
+                                        ;
+                                    })
                                     .switchToCurrentThread()
                                     .consumerValue(res -> {
                                         Tuple2<Boolean, String> tuple = (Tuple2<Boolean, String>) res;
@@ -256,8 +256,7 @@ public class ProxyLogicHandler extends ProtoGateLogicHandler {
                                             log.info("processLogin fail userId {}", userId);
                                             sink.success(loginMsgResp);
                                         }
-                                    }).start();
-                            ;
+                                    });
                         });
                     }
                 }, new Runnable() {

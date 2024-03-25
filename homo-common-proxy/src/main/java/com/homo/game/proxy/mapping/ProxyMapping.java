@@ -227,17 +227,14 @@ public class ProxyMapping extends AbstractHttpMapping {
 
     private Mono<Void> forwardProxy(String msgId, String msg, int port, ServerHttpResponse response) {
         HttpServer httpServer = routerHttpServerMap.get(port);
-        Span span = ZipkinUtil.currentSpan();
         return response.writeAndFlushWith(Mono.create(sink -> {
             httpServer.onCall(msgId, msg, response)
                     .subscribe(ret -> {
-                        span.tag("doHttpForward", "success");
                         sink.success(Mono.just(ret));
                     }, throwable -> {
-                        span.error(throwable).tag("doHttpForward", "error");
                         sink.error(throwable);
                     }, () -> {
-                        span.tag("doHttpForward Complete", "complete");
+
                     });
         }));
     }

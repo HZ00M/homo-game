@@ -88,8 +88,12 @@ public class HandlerContext implements RouterHandler {
         sink.error(throwable);
     }
 
-    public Homo<Object> process() {
-        return this.handler(this);
+    public void process() {
+        this.handler(this).consumerValue(ret->{
+            if (sink!= null){
+                sink.success(ret);
+            }
+        }).start();
     }
 
     @Override

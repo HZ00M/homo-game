@@ -9,11 +9,11 @@ import java.util.concurrent.CountDownLatch;
 
 @Slf4j
 @SpringBootApplication(scanBasePackages = "com.homo.game")
-public class ProxyApplication implements CommandLineRunner {
+public class GameProxyApplication implements CommandLineRunner {
     static CountDownLatch countDownLatch = new CountDownLatch(1);
 
     public static void main(String[] args) {
-        SpringApplication.run(ProxyApplication.class);
+        SpringApplication.run(GameProxyApplication.class);
         log.debug("============================================");
         try {
             countDownLatch.await(); // 等待退出

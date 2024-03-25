@@ -13,31 +13,33 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class UserEntity extends AbstractAbilityEntity implements SaveAble, IUerEntity {
     public int sendSeq = 1;
+    public int testMethodCallCount = 0;
 
     @Override
     public Homo<TestRsp> test(TestReq testReq) {
         log.info("UserEntity test testReq {}", testReq);
         TestRsp testRsp = TestRsp.newBuilder().setCode(1).setMsg("123").build();
+        testMethodCallCount ++;
         return Homo.result(testRsp);
     }
 
-    @Override
-    public void afterInit() {
-        //entity捞起且缓存起来，所有ability绑定完成完成后，调用
-        log.info("afterInit call id {} ", getOwnerId());
-        try {
-            getAbility(TimeAbility.class).schedule("test", new Runnable() {
-                @Override
-                public void run() {
-                    log.info("UserEntity schedule run id {} type {}",getId(),getType());
-                    scheduleSendMsgTest();
-                }
-            },1000,1000);
-        }catch (Exception e){
-            log.error("UserEntity schedule run error id {} type {} e",getId(),getType(),e);
-        }
-
-    }
+//    @Override
+//    public void afterInit() {
+//        //entity捞起且缓存起来，所有ability绑定完成完成后，调用
+//        log.info("afterInit call id {} ", getOwnerId());
+//        try {
+//            getAbility(TimeAbility.class).schedule("test", new Runnable() {
+//                @Override
+//                public void run() {
+//                    log.info("UserEntity schedule run id {} type {}",getId(),getType());
+//                    scheduleSendMsgTest();
+//                }
+//            },1000,1000);
+//        }catch (Exception e){
+//            log.error("UserEntity schedule run error id {} type {} e",getId(),getType(),e);
+//        }
+//
+//    }
 
     public void scheduleSendMsgTest() {
         IStatefulProxyService proxyService = GetBeanUtil.getBean(IStatefulProxyService.class);

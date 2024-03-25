@@ -2,7 +2,7 @@ package com.homo.game.stateful.proxy;
 
 import com.homo.core.gate.GateServerMgr;
 import com.homo.core.gate.tcp.TcpGateDriver;
-import com.homo.game.stateful.proxy.gate.ProxyLogicHandler;
+import com.homo.game.stateful.proxy.gate.StatefulProxyLogicHandler;
 import com.homo.game.stateful.proxy.gate.ProxyGateServer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +18,7 @@ public class StatefulProxyApplication implements CommandLineRunner {
     @Autowired
     private GateServerMgr gateServerMgr;
     @Autowired
-    private ProxyLogicHandler proxyLogicHandler;
+    private StatefulProxyLogicHandler proxyLogicHandler;
 
     static CountDownLatch countDownLatch = new CountDownLatch(1);
     public static void main(String[] args) {

@@ -15,7 +15,11 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
 import com.google.protobuf.ByteString;
 import com.homo.core.rpc.http.dto.ResponseMsg;
+import com.homo.core.utils.concurrent.queue.CallQueue;
+import com.homo.core.utils.concurrent.queue.CallQueueMgr;
 import com.homo.core.utils.exception.HomoError;
+import com.homo.core.utils.http.HttpCallerFactory;
+import com.homo.core.utils.module.ServiceModule;
 import com.homo.game.proxy.config.CommonProxyProperties;
 import com.homo.game.proxy.dto.HeaderParam;
 import com.homo.game.proxy.dto.ProxyParam;
@@ -24,8 +28,6 @@ import com.homo.game.proxy.enums.ProxyKey;
 import com.homo.game.proxy.facade.ICommonHttpClientProxy;
 import com.homo.game.proxy.handler.AuthTokenHandler;
 import com.homo.game.proxy.util.ProxyCheckParamUtils;
-import com.homo.core.common.http.HttpCallerFactory;
-import com.homo.core.facade.module.ServiceModule;
 import com.homo.core.facade.rpc.RpcAgentClient;
 import com.homo.core.rpc.base.serial.ByteRpcContent;
 import com.homo.core.rpc.base.serial.JsonRpcContent;
@@ -66,7 +68,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
     private AuthTokenHandler tokenHandler;
 
     @Override
-    public void init() {
+    public void afterAllModuleInit() {
         ReadableDataSource<String, List<FlowRule>> flowRuleDataSource = new ApolloDataSource<>(commonProxyProperties.getDatasourceNamespace(), "flowRules",
                 "[]", new Converter<String, List<FlowRule>>() {
             @Override
@@ -84,6 +86,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
     public Homo<String> httpForward(JSONObject requestJson, JSONObject headerJson) {
         try {
             log.info("httpForward begin headerJson {} requestJson {}", headerJson, requestJson);
+
             AsyncEntry entry;
             String method = requestJson.getString(ProxyKey.METHOD_KEY);
             String url = requestJson.getString(ProxyKey.URL_KEY);
@@ -117,7 +120,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                 }
                 canForwardPromise = tokenHandler.checkToken(appId,channelId, userId, token);
             }
-            return canForwardPromise
+             return canForwardPromise
                     .nextDo(pass -> {
                         if (!pass) {
                             log.error("check token error headersJson_{} requestJson_{}", headerJson, requestJson);
@@ -148,10 +151,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                             }
                         }
                         String forwardUrlWithParam = forwardUrlBuilder.toString();
-                        Span span = ZipkinUtil.getTracing().tracer().currentSpan();
-                        if (span != null) {
-                            span.name("httpForward").tag("url", forwardUrl);
-                        }
+
                         return httpCall(entry, forwardUrl, forwardUrlWithParam, method, msg, headerJson, requestJson);
                     })
                     .consumerValue(ret -> {
@@ -175,14 +175,24 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
     }
 
     private Homo<String> httpCall(AsyncEntry asyncEntry, String host, String url, String method, String msg, JSONObject headersJson, JSONObject requestJson) {
+        CallQueue queue = CallQueueMgr.getInstance().getLocalQueue();
+        Span span = ZipkinUtil.getTracing()
+                .tracer()
+                .nextSpan()
+                .name(method)
+                .tag("url",url)
+                .annotate(ZipkinUtil.CLIENT_SEND_TAG);
+        long traceId = span.context().traceId();
+        long spanId = span.context().spanId();
+        Boolean sampled = span.context().sampled();
         return Homo.warp(() -> {
             log.info("httpCall start host {} url {} method {} msg {} headersJson {} requestJson {}", host, url, method, msg, headersJson, requestJson);
             String responseTimeStr = headersJson.getString(ProxyKey.X_HOMO_RESPONSE_TIME);
             long responseTime = responseTimeStr == null ? 10000 : Long.parseLong(responseTimeStr);
             headersJson.remove("Host");
-            Span span = ZipkinUtil.getTracing()
-                    .tracer()
-                    .currentSpan();
+            headersJson.put("traceId",String.valueOf(traceId));
+            headersJson.put("spanId",String.valueOf(spanId));
+            headersJson.put("sampled",String.valueOf(sampled));
             HttpClient httpClient = httpCallerFactory.getHttpClientCache(host);
             Mono<ResponseMsg> httpParamMono = httpClient
                     .followRedirect(true)//不允许重定向
@@ -215,11 +225,12 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                         });
                     });
             return Homo.warp(() -> httpParamMono)
-//                    .switchToCurrentThread()//todo 需验证是否有线程问题
+                    .switchThread(queue,span)
                     .nextDo(httpParam -> {
-                        if (span != null) {
-                            span.annotate("Http Finish")
-                                    .tag("httpCode", httpParam.getCode() + "");
+                        if (span != null){
+                            span.annotate(ZipkinUtil.CLIENT_RECEIVE_TAG)
+                                    .tag("httpCode", httpParam.getCode() + "")
+                                    .finish();
                         }
                         if (asyncEntry != null) {
                             asyncEntry.exit();

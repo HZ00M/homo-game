@@ -1,7 +1,7 @@
 package com.homo.game.login.service;
 
-import com.homo.core.facade.module.RootModule;
 import com.homo.core.rpc.base.service.BaseService;
+import com.homo.core.utils.module.RootModule;
 import com.homo.core.utils.rector.Homo;
 import com.homo.game.login.facade.IGrpcLoginService;
 import com.homo.game.login.facade.dto.CommonCode;

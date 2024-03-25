@@ -1,12 +1,16 @@
 package com.homo.game.proxy.handler;
 
+import brave.Span;
 import com.google.protobuf.ByteString;
 import com.homo.core.facade.service.ServiceStateMgr;
 import com.homo.core.rpc.base.serial.ByteRpcContent;
 import com.homo.core.rpc.client.ExchangeHostName;
 import com.homo.core.rpc.client.RpcClientMgr;
+import com.homo.core.utils.concurrent.queue.CallQueue;
+import com.homo.core.utils.concurrent.queue.CallQueueMgr;
 import com.homo.core.utils.rector.Homo;
 import com.homo.core.utils.serial.FSTSerializationProcessor;
+import com.homo.core.utils.trace.ZipkinUtil;
 import io.homo.proto.client.ClientRouterHeader;
 import io.homo.proto.client.ClientRouterMsg;
 import io.homo.proto.client.ParameterMsg;
@@ -47,6 +51,9 @@ public class DefaultRouterHandler implements RouterHandler {
 
         }
         String finalSrcService = srcService;
+//        CallQueue callQueue = CallQueueMgr.getInstance().getLocalQueue();
+        Span span = ZipkinUtil.currentSpan();
+//        Span span = ZipkinUtil.getTracing().tracer().nextSpan().name("DefaultRouterHandler:router").annotate(ZipkinUtil.CLIENT_SEND_TAG);
         return serviceStateMgr.getServiceInfo(srcService)
                 .nextDo(serviceInfo -> {
                     log.info("router userId {} srcService {} msgId {}", userId, finalSrcService, msgId);
@@ -73,6 +80,9 @@ public class DefaultRouterHandler implements RouterHandler {
                                             log.error("DefaultRouterHandler handler error userId {} msgId {} throwable {}", userId, msgId, throwable);
                                             context.error((Throwable) throwable);
                                         });
+                            })
+                            .consumerValue(ret->{
+                                span.annotate(ZipkinUtil.CLIENT_RECEIVE_TAG).finish();
                             });
                 });
 

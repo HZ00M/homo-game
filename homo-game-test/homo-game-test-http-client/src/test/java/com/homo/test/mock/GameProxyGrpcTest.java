@@ -72,7 +72,7 @@ public class GameProxyGrpcTest {
         TestReq httpTestReq = TestReq.newBuilder().setSign("sign").setChannelId("channelId").build();
         ClientRouterMsg clientRouterMsg = ClientRouterMsg.newBuilder()
                 .setSrcService("entity-test-service")
-                .setMsgId("test")
+                .setMsgId("testProto")
                 .addMsgContent(httpTestReq.toByteString())
                 .setSign("52f633ec818319aac1180cbcbece882c")
                 .setToken("token")
@@ -99,7 +99,7 @@ public class GameProxyGrpcTest {
     @Test
     public void entityCallTest() throws InterruptedException, NoSuchAlgorithmException, InvalidProtocolBufferException {
         TestReq testReq = TestReq.newBuilder().setToken("123").setSign("2313").build();
-        EntityRequest entityRequest = EntityRequest.newBuilder().setType("user").setFunName("testProto").setSrcName("client").addContent(testReq.toByteString()).build();
+        EntityRequest entityRequest = EntityRequest.newBuilder().setType("user").setFunName("test").setSrcName("client").addContent(testReq.toByteString()).build();
         ClientRouterMsg clientRouterMsg = ClientRouterMsg.newBuilder()
                 .setSrcService("entity-test-service")
                 .setEntityType("user")

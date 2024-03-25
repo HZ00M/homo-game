@@ -9,11 +9,11 @@ import java.util.concurrent.CountDownLatch;
 
 @Slf4j
 @SpringBootApplication
-public class GameTestApplication implements CommandLineRunner {
+public class HttpTestApplication implements CommandLineRunner {
     static CountDownLatch countDownLatch = new CountDownLatch(1);
 
     public static void main(String[] args) {
-        SpringApplication.run(GameTestApplication.class);
+        SpringApplication.run(HttpTestApplication.class);
         log.debug("============================================");
         try {
             countDownLatch.await(); // 等待退出
