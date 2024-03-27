@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.homo</groupId>
         <artifactId>homo-core</artifactId>
-        <version>1.0.0.34-SNAPSHOT</version>
+        <version>1.0.0.38-SNAPSHOT</version>
     </parent>
 
     <artifactId>homo-game</artifactId>
@@ -17,9 +17,9 @@
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <sentinel.version>1.8.3</sentinel.version>
-        <revision>1.0.0.34-SNAPSHOT</revision>
+        <revision>1.0.0.38-SNAPSHOT</revision>
         <spring.boot.plugin>2.5.4</spring.boot.plugin>
-        <homo.core.version>1.0.0.34-SNAPSHOT</homo.core.version>
+        <homo.core.version>1.0.0.38-SNAPSHOT</homo.core.version>
     </properties>
 
     <modules>
