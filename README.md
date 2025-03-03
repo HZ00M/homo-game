@@ -27,3 +27,6 @@
 - ### Homo-game-activity-core
   - [Homo-game-activity-core](homo-game-activity-core)
   活动框架核心，迭代中
+
+## 依赖框架
+- 基底项目Homo-core： [github.com/HZ00M/homo](https://github.com/HZ00M/homo)
