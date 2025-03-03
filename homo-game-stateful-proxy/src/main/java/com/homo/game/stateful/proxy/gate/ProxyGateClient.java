@@ -133,8 +133,8 @@ public class ProxyGateClient extends DefaultGateClient implements CallQueueProdu
     }
 
     public TransferCacheResp transfer(String uid, SyncInfo syncInfo, int fromPodId) {
-        Integer cacheStartReq = syncInfo.getStartSeq();
         Integer clientConfirmSeq = syncInfo.getRecReq();
+        Integer cacheStartReq = syncInfo.getStartSeq();
         int clientCount = syncInfo.getCount();
         log.info("transfer uid {} fromPodId {} cacheStartReq {} clientConfirmSeq {} clientCount {}", uid, fromPodId, cacheStartReq, clientConfirmSeq, clientCount);
         if (state == State.LOGIN || state == State.RECONNECTED || state == State.INACTIVE) {

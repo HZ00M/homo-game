@@ -52,46 +52,47 @@ message ToClientResp {
 //}
 //
 //
+//登陆连接验证
 message LoginMsgReq {
-    string token          = 1;
-    string userId         = 2;
-    string channelId      = 3;
-    string appVersion = 4;
-    string resVersion = 5;
+    string token          = 1; //从登陆平台获得的token
+    string userId         = 2; //用户id
+    string channelId      = 3; //用户渠道
+    string appVersion = 4;  //客户端版本
+    string resVersion = 5;  //资源版本
     string adId = 6;
 }
-
+//连接验证成功后就可以发送tcp消息
 message LoginMsgResp {
     int32 errorCode = 1;
     string errorMsg     = 2;
 }
 
+//数据同步
 message SyncInfo{
     //本地缓存开始序号/将要开始的，重新登陆时序号为0，后续继续调用TransferCacheReq直到count为0
     int32 startSeq = 1;
     //接收到的包序号
     int32 recReq = 2;
-    //缓存数量,0代表没有缓存
+    //缓存数量,0代表没有缓存，多次同步，直到count为0
     int32 count = 3;
 }
-
+//断线重连
 message LoginAndSyncReq{
-    LoginMsgReq loginMsgReq = 1;
-    SyncInfo syncInfo = 2;
+    LoginMsgReq loginMsgReq = 1; //登陆参数
+    SyncInfo syncInfo = 2;  // 断线重连发送的同步信息，服务器会根据客户端当前接受的包序列号，尝试将服务器发送的未被接收的数据进行补发
 }
 
 message LoginAndSyncResp{
     LoginMsgResp loginMsgResp = 1;
-    SyncInfo syncInfo = 2;
 }
 
+//断线重连成功时如果存在未发送数据，服务器内部会主动调用TransferCacheReq获取续传数据
 message TransferCacheReq {
     string userId = 1;
     int32 podId = 2;
     SyncInfo syncInfo = 3;
-
 }
-
+//断线重连成功后，服务器会通过tcp连接发送该续传消息
 message TransferCacheResp {
     enum ErrorType {
         OK = 0;
@@ -112,9 +113,9 @@ message TransferCacheResp {
     }
     ErrorType errorCode = 1;
     string errorMsg = 2;
-    int32 sendSeq = 3;
-    int32 recvSeq = 4;
-    repeated SyncMsg syncMsgList = 5;
+    int32 sendSeq = 3;  //当前服务器发送序号
+    int32 recvSeq = 4;  //当前服务器接收到序号
+    repeated SyncMsg syncMsgList = 5; //续传消息
 }
 
 // 有状态proxy断开连接消息

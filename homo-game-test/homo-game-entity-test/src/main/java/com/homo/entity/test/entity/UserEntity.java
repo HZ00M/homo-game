@@ -1,8 +1,6 @@
 package com.homo.entity.test.entity;
 
-import com.core.ability.base.AbstractAbilityEntity;
-import com.core.ability.base.timer.TimeAbility;
-import com.homo.core.facade.ability.SaveAble;
+import com.core.ability.base.BaseAbilityEntity;
 import com.homo.core.utils.rector.Homo;
 import com.homo.core.utils.spring.GetBeanUtil;
 import com.homo.entity.test.facade.entity.IUerEntity;
@@ -11,7 +9,7 @@ import io.homo.proto.client.*;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class UserEntity extends AbstractAbilityEntity implements SaveAble, IUerEntity {
+public class UserEntity extends BaseAbilityEntity implements IUerEntity {
     public int sendSeq = 1;
     public int testMethodCallCount = 0;
 

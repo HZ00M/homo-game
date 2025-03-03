@@ -9,7 +9,7 @@
         <version>${revision}</version>
     </parent>
 
-    <artifactId>homo-game-entity-test</artifactId>
+    <artifactId>homo-turntable-test</artifactId>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
@@ -19,16 +19,13 @@
     <dependencies>
         <dependency>
             <groupId>com.homo</groupId>
-            <artifactId>homo-game-entity-test-facade</artifactId>
+            <artifactId>homo-core-facade</artifactId>
         </dependency>
         <dependency>
             <groupId>com.homo</groupId>
-            <artifactId>homo-core-system</artifactId>
+            <artifactId>homo-maven-plugin</artifactId>
         </dependency>
-        <dependency>
-            <groupId>com.homo</groupId>
-            <artifactId>homo-game-stateful-proxy-facade</artifactId>
-        </dependency>
+
     </dependencies>
     <build>
         <plugins>
@@ -54,10 +51,20 @@
                 <version>${homo.core.version}</version>
                 <executions>
                     <execution>
+                        <id>homoTurnTable-1</id>
                         <goals>
-                            <goal>homoBuild</goal>
-                            <goal>homoClean</goal>
+                            <goal>homoTurnTable</goal>
                         </goals>
+                        <configuration>
+                            <fltPath>E:\homo-game\Turn_table\ftl</fltPath>
+                            <javaPath>E:\homo-game\homo-game-test\homo-turntable-test\src\main\java\com\homo\turntable\data</javaPath>
+                            <packageName>com.homo.turntable.data</packageName>
+                            <dataPath>E:\homo-game\Turn_table\homo_turntable_test</dataPath>
+                            <jsonPath>E:\homo-game\homo-game-test\homo-turntable-test\src\main\resources\json</jsonPath>
+                            <codeType>.java</codeType>
+                            <filter>S</filter>
+                            <suffix>xlsx</suffix>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

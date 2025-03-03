@@ -19,11 +19,11 @@
     <dependencies>
         <dependency>
             <groupId>com.homo</groupId>
-            <artifactId>homo-service-storage-dirty</artifactId>
+            <artifactId>homo-core-storage-dirty-redis</artifactId>
         </dependency>
         <dependency>
             <groupId>com.homo</groupId>
-            <artifactId>homo-service-mysql-landing</artifactId>
+            <artifactId>homo-core-storage-landing-mysql</artifactId>
         </dependency>
     </dependencies>
     <build>

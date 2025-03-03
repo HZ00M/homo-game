@@ -23,6 +23,7 @@
         <module>homo-game-entity-test-facade</module>
         <module>homo-game-entity-test</module>
         <module>homo-tcp-client-test</module>
+        <module>homo-turntable-test</module>
     </modules>
     <build>
         <plugins>
@@ -109,6 +110,11 @@
             <dependency>
                 <groupId>com.homo</groupId>
                 <artifactId>homo-game-test-http-client</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.homo</groupId>
+                <artifactId>homo-turntable-test</artifactId>
                 <version>${revision}</version>
             </dependency>
         </dependencies>

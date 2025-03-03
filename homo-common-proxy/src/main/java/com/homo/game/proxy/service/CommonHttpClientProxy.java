@@ -14,6 +14,7 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
 import com.google.protobuf.ByteString;
+import com.homo.core.facade.service.ServiceStateMgr;
 import com.homo.core.rpc.http.dto.ResponseMsg;
 import com.homo.core.utils.concurrent.queue.CallQueue;
 import com.homo.core.utils.concurrent.queue.CallQueueMgr;
@@ -66,6 +67,8 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
     private RpcClientMgr rpcClientMgr;
     @Autowired
     private AuthTokenHandler tokenHandler;
+    @Autowired
+    ServiceStateMgr serviceStateMgr;
 
     @Override
     public void afterAllModuleInit() {
@@ -118,9 +121,9 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                     ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.param_miss.getCode()).codeDesc(HomoCommonError.param_miss.message()).build();
                     return Homo.result(JSON.toJSONString(responseMsg));
                 }
-                canForwardPromise = tokenHandler.checkToken(appId,channelId, userId, token);
+                canForwardPromise = tokenHandler.checkToken(appId, channelId, userId, token);
             }
-             return canForwardPromise
+            return canForwardPromise
                     .nextDo(pass -> {
                         if (!pass) {
                             log.error("check token error headersJson_{} requestJson_{}", headerJson, requestJson);
@@ -180,7 +183,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                 .tracer()
                 .nextSpan()
                 .name(method)
-                .tag("url",url)
+                .tag("url", url)
                 .annotate(ZipkinUtil.CLIENT_SEND_TAG);
         long traceId = span.context().traceId();
         long spanId = span.context().spanId();
@@ -190,9 +193,9 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
             String responseTimeStr = headersJson.getString(ProxyKey.X_HOMO_RESPONSE_TIME);
             long responseTime = responseTimeStr == null ? 10000 : Long.parseLong(responseTimeStr);
             headersJson.remove("Host");
-            headersJson.put("traceId",String.valueOf(traceId));
-            headersJson.put("spanId",String.valueOf(spanId));
-            headersJson.put("sampled",String.valueOf(sampled));
+            headersJson.put("traceId", String.valueOf(traceId));
+            headersJson.put("spanId", String.valueOf(spanId));
+            headersJson.put("sampled", String.valueOf(sampled));
             HttpClient httpClient = httpCallerFactory.getHttpClientCache(host);
             Mono<ResponseMsg> httpParamMono = httpClient
                     .followRedirect(true)//不允许重定向
@@ -225,9 +228,9 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                         });
                     });
             return Homo.warp(() -> httpParamMono)
-                    .switchThread(queue,span)
+                    .switchThread(queue, span)
                     .nextDo(httpParam -> {
-                        if (span != null){
+                        if (span != null) {
                             span.annotate(ZipkinUtil.CLIENT_RECEIVE_TAG)
                                     .tag("httpCode", httpParam.getCode() + "")
                                     .finish();
@@ -273,7 +276,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
             return Homo.result(JSON.toJSONString(responseMsg));
         }
 
-        return tokenHandler.checkToken(appId,token, userId, channelId)
+        return tokenHandler.checkToken(appId, token, userId, channelId)
                 .nextDo(checkPass -> {
                     if (!checkPass) {
                         log.error("clientJsonMsgCheckToken checkPass error headerParam {} proxyParam {}", headerParam, proxyParam);
@@ -284,24 +287,28 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                     paramArray.add(msgContent);
                     //把消息头添加到最后一个参数
                     paramArray.add(headerParam);
-                    JsonRpcContent rpcContent = JsonRpcContent.builder().data(paramArray.toJSONString()).build();
+                    JsonRpcContent rpcContent = new JsonRpcContent();
+                    rpcContent.setParam(paramArray.toJSONString());
                     String serverPort = commonProxyProperties.getServerPortMap().get(srcService);
                     String serviceName = srcService + ":" + serverPort;
-                    RpcAgentClient agentClient = rpcClientMgr.getGrpcAgentClient(serviceName);
-                    Homo<String> homo = agentClient.rpcCall(msgId, rpcContent)
-                            .nextDo(ret -> {
-                                Tuple2<String, JsonRpcContent> retTuple = (Tuple2<String, JsonRpcContent>) ret;
-                                String retData = retTuple.getT2().getData();
-                                log.info("proxyCall serviceName {} msgId {} rpcContent {} jsonRet {}", serviceName, msgId, rpcContent, ret);
-                                ResponseMsg responseMsg = ResponseMsg.builder()
-                                        .code(HomoError.success.getCode())
-                                        .codeDesc(HomoError.success.message())
-                                        .msgId(msgId)
-                                        .msgContent(retData)
-                                        .build();
-                                return Homo.result(JSON.toJSONString(responseMsg));
+                    return serviceStateMgr.getServiceInfo(srcService)
+                            .nextDo(serviceInfo -> {
+                                RpcAgentClient agentClient = rpcClientMgr.getAgentClient(serviceName, serviceInfo);
+                                Homo<String> homo = agentClient.rpcCall(msgId, rpcContent)
+                                        .nextDo(ret -> {
+                                            String retData = rpcContent.getReturn();
+                                            log.info("proxyCall serviceName {} msgId {} rpcContent {} jsonRet {}", serviceName, msgId, rpcContent, ret);
+                                            ResponseMsg responseMsg = ResponseMsg.builder()
+                                                    .code(HomoError.success.getCode())
+                                                    .codeDesc(HomoError.success.message())
+                                                    .msgId(msgId)
+                                                    .msgContent(retData)
+                                                    .build();
+                                            return Homo.result(JSON.toJSONString(responseMsg));
+                                        });
+                                return homo;
                             });
-                    return homo;
+
                 })
                 .errorContinue(throwable -> {
                     log.error("clientJsonMsgCheckToken system error headerParam {} proxyParam {} e", headerParam, proxyParam, throwable);
@@ -330,7 +337,7 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
             return Homo.result(responseMsg);
         }
 
-        return tokenHandler.checkToken(appId,token, userId, channelId)
+        return tokenHandler.checkToken(appId, token, userId, channelId)
                 .nextDo(checkPass -> {
                     if (!checkPass) {
                         log.info("clientPbMsgCheckToken !checkPass userId {} srcService {} msgId {} appId {} channelId {}",
@@ -338,29 +345,33 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
                         Msg responseMsg = Msg.newBuilder().setCode(HomoCommonError.token_error.getCode()).setCodeDesc(HomoCommonError.token_error.message()).build();
                         return Homo.result(responseMsg);
                     }
-                    List<ByteString> msgContentList = clientRouterMsg.getMsgContentList();
-                    byte[][] params = new byte[msgContentList.size()][];
-                    for (ByteString bytes : msgContentList) {
-                        params[0] = bytes.toByteArray();
-                    }
-                    String serverPort = commonProxyProperties.getServerPortMap().get(srcService);
-                    String serviceName = srcService + ":" + serverPort;
-                    ByteRpcContent rpcContent = ByteRpcContent.builder().data(params).build();
-                    RpcAgentClient agentClient = rpcClientMgr.getGrpcAgentClient(serviceName);
-                    Homo<Msg> homo = agentClient.rpcCall(msgId, rpcContent)
-                            .nextDo(ret -> {
-                                Tuple2<String, ByteRpcContent> retTuple = (Tuple2<String, ByteRpcContent>) ret;
-                                byte[][] data = retTuple.getT2().getData();
-                                log.info("proxyCall serviceName {} msgId {} ", serviceName, msgId);
-                                Msg responseMsg = Msg.newBuilder()
-                                        .setCode(HomoError.success.getCode())
-                                        .setCodeDesc(HomoError.success.message())
-                                        .setMsgId(msgId)
-                                        .setMsgContent(ByteString.copyFrom(data[0]))
-                                        .build();
-                                return Homo.result(responseMsg);
+                    return serviceStateMgr.getServiceInfo(srcService)
+                            .nextDo(serviceInfo -> {
+                                List<ByteString> msgContentList = clientRouterMsg.getMsgContentList();
+                                byte[][] params = new byte[msgContentList.size()][];
+                                for (ByteString bytes : msgContentList) {
+                                    params[0] = bytes.toByteArray();
+                                }
+                                String serverPort = commonProxyProperties.getServerPortMap().get(srcService);
+                                String serviceName = srcService + ":" + serverPort;
+                                ByteRpcContent rpcContent = new ByteRpcContent();
+                                rpcContent.setParam(params);
+                                RpcAgentClient agentClient = rpcClientMgr.getAgentClient(serviceName, serviceInfo);
+                                Homo<Msg> homo = agentClient.rpcCall(msgId, rpcContent)
+                                        .nextDo(ret -> {
+                                            byte[] data = rpcContent.getReturn();
+                                            log.info("proxyCall serviceName {} msgId {} ", serviceName, msgId);
+                                            Msg responseMsg = Msg.newBuilder()
+                                                    .setCode(HomoError.success.getCode())
+                                                    .setCodeDesc(HomoError.success.message())
+                                                    .setMsgId(msgId)
+                                                    .setMsgContent(ByteString.copyFrom(data))
+                                                    .build();
+                                            return Homo.result(responseMsg);
+                                        });
+                                return homo;
                             });
-                    return homo;
+
                 })
                 .errorContinue(throwable -> {
                     log.error("clientPbMsgCheckToken system error clientRouterMsg {}  e", clientRouterMsg, throwable);
@@ -405,31 +416,35 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
             paramArray.add(msgContent);
             //把消息头添加到最后一个参数
             paramArray.add(headerParam);
-            JsonRpcContent rpcContent = JsonRpcContent.builder().data(paramArray.toJSONString()).build();
-            RpcAgentClient agentClient = rpcClientMgr.getGrpcAgentClient(serviceName);
-            Homo<String> homo = agentClient.rpcCall(msgId, rpcContent)
-                    .nextDo(ret -> {
-                        Tuple2<String, JsonRpcContent> retTuple = (Tuple2<String, JsonRpcContent>) ret;
-                        String retData = retTuple.getT2().getData();
-                        log.info("proxyCall serviceName {} msgId {} rpcContent {} jsonRet {}", serviceName, msgId, rpcContent, retData);
-                        ResponseMsg responseMsg = ResponseMsg.builder()
-                                .code(HomoError.success.getCode())
-                                .codeDesc(HomoError.success.message())
-                                .msgId(msgId)
-                                .msgContent(retData)
-                                .build();
-                        return Homo.result(JSON.toJSONString(responseMsg));
+            JsonRpcContent rpcContent = new JsonRpcContent();
+            rpcContent.setParam(paramArray.toJSONString());
+            return serviceStateMgr.getServiceInfo(srcService)
+                    .nextDo(serviceInfo -> {
+                        RpcAgentClient agentClient = rpcClientMgr.getAgentClient(serviceName, serviceInfo);
+                        Homo<String> homo = agentClient.rpcCall(msgId, rpcContent)
+                                .nextDo(ret -> {
+                                    String retData = rpcContent.getReturn();
+                                    log.info("proxyCall serviceName {} msgId {} rpcContent {} jsonRet {}", serviceName, msgId, rpcContent, retData);
+                                    ResponseMsg responseMsg = ResponseMsg.builder()
+                                            .code(HomoError.success.getCode())
+                                            .codeDesc(HomoError.success.message())
+                                            .msgId(msgId)
+                                            .msgContent(retData)
+                                            .build();
+                                    return Homo.result(JSON.toJSONString(responseMsg));
+                                });
+                        return homo.errorContinue(throwable -> {
+                            log.error("clientJsonMsgCheckSign rpcCall error headerParam {} proxyParam {} e", headerParam, proxyParam, throwable);
+                            ResponseMsg responseMsg;
+                            if (throwable instanceof StatusRuntimeException) {
+                                responseMsg = ResponseMsg.builder().code(HomoCommonError.remote_server_no_response.getCode()).codeDesc(HomoCommonError.remote_server_no_response.msgFormat(srcService)).build();
+                            } else {
+                                responseMsg = ResponseMsg.builder().code(HomoCommonError.common_system_error.getCode()).codeDesc(HomoCommonError.common_system_error.message()).build();
+                            }
+                            return Homo.result(JSON.toJSONString(responseMsg));
+                        });
                     });
-            return homo.errorContinue(throwable -> {
-                log.error("clientJsonMsgCheckSign rpcCall error headerParam {} proxyParam {} e", headerParam, proxyParam, throwable);
-                ResponseMsg responseMsg;
-                if (throwable instanceof StatusRuntimeException) {
-                    responseMsg = ResponseMsg.builder().code(HomoCommonError.remote_server_no_response.getCode()).codeDesc(HomoCommonError.remote_server_no_response.msgFormat(srcService)).build();
-                } else {
-                    responseMsg = ResponseMsg.builder().code(HomoCommonError.common_system_error.getCode()).codeDesc(HomoCommonError.common_system_error.message()).build();
-                }
-                return Homo.result(JSON.toJSONString(responseMsg));
-            });
+
         } catch (Exception e) {
             log.error("clientJsonMsgCheckSign system error headerParam {} proxyParam {} e", headerParam, proxyParam, e);
             ResponseMsg responseMsg = ResponseMsg.builder().code(HomoCommonError.common_system_error.getCode()).codeDesc(HomoCommonError.common_system_error.message()).build();
@@ -475,28 +490,32 @@ public class CommonHttpClientProxy extends BaseService implements ICommonHttpCli
             }
             String serverPort = commonProxyProperties.getServerPortMap().get(srcService);
             String serviceName = srcService + ":" + serverPort;
-            ByteRpcContent rpcContent = ByteRpcContent.builder().data(params).build();
-            RpcAgentClient agentClient = rpcClientMgr.getGrpcAgentClient(serviceName);
-            Homo<Msg> homo = agentClient.rpcCall(msgId, rpcContent)
-                    .nextDo(ret -> {
-                        Tuple2<String, ByteRpcContent> retTuple = (Tuple2<String, ByteRpcContent>) ret;
-                        byte[][] data = retTuple.getT2().getData();
-                        log.info("clientPbMsgCheckSign ret srcService {} msgId {} userId {} token {} appId {} channelId {} clientSign {}",
-                                srcService, msgId, userId, token, appId, channelId, clientSign);
-                        Msg responseMsg = Msg.newBuilder()
-                                .setCode(HomoError.success.getCode())
-                                .setCodeDesc(HomoError.success.message())
-                                .setMsgId(msgId)
-                                .setMsgContent(ByteString.copyFrom(data[0]))
-                                .build();
-                        return Homo.result(responseMsg);
-                    })
-                    .errorContinue(throwable -> {
-                        log.error("clientPbMsgCheckSign system error clientRouterMsg {}  e", clientRouterMsg, throwable);
-                        Msg responseMsg = Msg.newBuilder().setCode(HomoCommonError.common_system_error.getCode()).setCodeDesc(HomoCommonError.common_system_error.message()).build();
-                        return Homo.result(responseMsg);
+            ByteRpcContent rpcContent = new ByteRpcContent();
+            rpcContent.setParam(params);
+            return serviceStateMgr.getServiceInfo(srcService)
+                    .nextDo(serviceInfo -> {
+                        RpcAgentClient agentClient = rpcClientMgr.getAgentClient(serviceName,serviceInfo);
+                        Homo<Msg> homo = agentClient.rpcCall(msgId, rpcContent)
+                                .nextDo(ret -> {
+                                    byte[] data = rpcContent.getReturn();
+                                    log.info("clientPbMsgCheckSign ret srcService {} msgId {} userId {} token {} appId {} channelId {} clientSign {}",
+                                            srcService, msgId, userId, token, appId, channelId, clientSign);
+                                    Msg responseMsg = Msg.newBuilder()
+                                            .setCode(HomoError.success.getCode())
+                                            .setCodeDesc(HomoError.success.message())
+                                            .setMsgId(msgId)
+                                            .setMsgContent(ByteString.copyFrom(data))
+                                            .build();
+                                    return Homo.result(responseMsg);
+                                })
+                                .errorContinue(throwable -> {
+                                    log.error("clientPbMsgCheckSign system error clientRouterMsg {}  e", clientRouterMsg, throwable);
+                                    Msg responseMsg = Msg.newBuilder().setCode(HomoCommonError.common_system_error.getCode()).setCodeDesc(HomoCommonError.common_system_error.message()).build();
+                                    return Homo.result(responseMsg);
+                                });
+                        return homo;
                     });
-            return homo;
+
         } catch (Exception e) {
             log.error("clientPbMsgCheckSign system error  {} msgId {} userId {} token {} appId {} channelId {} clientSign {} ",
                     srcService, msgId, userId, token, appId, channelId, clientSign, e);

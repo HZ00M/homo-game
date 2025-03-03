@@ -134,6 +134,7 @@ public class StatefulProxyLogicHandler extends ProtoGateLogicHandler {
                                     .build();
                             routerHandlerMgr.create(homoSink, "defaultRouterHandler")
                                     .router(clientRouterMsg)
+                                    .setParam(RouterHandler.PARAM_SERVER_INFO,serviceInfo)
                                     .setParam(RouterHandler.PARAM_SRC_SERVICE, serviceInfo.getServiceTag())
                                     .setParam(RouterHandler.PARAMETER_MSG, parameterMsg)
                                     .process();
@@ -141,9 +142,9 @@ public class StatefulProxyLogicHandler extends ProtoGateLogicHandler {
             }).consumerValue(ret -> {
                 Tuple2<String, ByteRpcContent> tuple = (Tuple2<String, ByteRpcContent>) ret;
                 String msgId = tuple.getT1();
-                byte[][] data = tuple.getT2().getData();
+                byte[] data = tuple.getT2().getReturn();
                 Msg.Builder gateMsgResp = Msg.newBuilder();
-                Msg msg = gateMsgResp.setMsgId(tuple.getT1()).setMsgContent(ByteString.copyFrom(data[0])).build();
+                Msg msg = gateMsgResp.setMsgId(tuple.getT1()).setMsgContent(ByteString.copyFrom(data)).build();
                 gateClient.sendToClient(msgId, msg.toByteArray());
                 log.info("processRouterMsg success userId {} msgId {}", gateClient.getUid(), msgId);
             });

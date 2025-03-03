@@ -67,8 +67,10 @@ public class DefaultRouterHandler implements RouterHandler {
                                 for (ByteString bytes : msgContentList) {
                                     data[msgContentList.indexOf(bytes) + 2] = bytes.toByteArray();
                                 }
-                                ByteRpcContent rpcContent = ByteRpcContent.builder().data(data).build();
-                                return rpcClientMgr.getGrpcAgentClient(realHostName)
+
+                                ByteRpcContent rpcContent = new ByteRpcContent();
+                                rpcContent.setParam(data);
+                                return rpcClientMgr.getAgentClient(realHostName,serviceInfo)
                                         .rpcCall(msgId, rpcContent)
                                         .nextDo(ret -> {
                                             Tuple2<String, ByteRpcContent> contentTuple2 = (Tuple2<String, ByteRpcContent>) ret;
