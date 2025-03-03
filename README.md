@@ -10,14 +10,20 @@
 ![homo-proxy](docs/images/架构图.jpg)
 ## 模块介绍
 - ### Homo-common-proxy (公共服代理服务)
-  - [Homo-common-proxy](docs/homo_common_proxy.md) 
+  - [使用文档](docs/homo_common_proxy.md) 
+  - [Homo-common-proxy](homo-common-proxy)
 - ### Homo-game-proxy (Http转发代理)
-  - [Homo-game-proxy](docs/homo_game_proxy.md) 
+  - [使用文档](docs/homo_game_proxy.md) 
+  - [Homo-game-proxy](homo-game-proxy)
 - ### Homo-tcp-proxy (Tcp转发代理)
-  - [Homo-tcp-proxy](docs/homo_tcp_proxy.md) 
+  - [使用文档](docs/homo_tcp_proxy.md) 
+  - [Homo-game-stateful-proxy](homo-game-stateful-proxy)
 - ### Homo-game-persistent-server (落地服务)
-  - [Homo-game-persistent-server](docs/homo_persistent.md) 
+  - [使用文档](docs/homo_persistent.md) 
+  - [Homo-game-persistent-server](homo-game-persistent-server)
 - ### Homo-game-login 
-  登陆服务，仅供参考实现，实际根据游戏自身业务开发 
+  - [Homo-game-login](homo-game-login)
+  登陆服务，仅供参考实现，实际根据游戏自身业务开发
 - ### Homo-game-activity-core
+  - [Homo-game-activity-core](homo-game-activity-core)
   活动框架核心，迭代中
