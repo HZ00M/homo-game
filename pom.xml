@@ -6,7 +6,7 @@
     <parent>
         <groupId>com.homo</groupId>
         <artifactId>homo-core</artifactId>
-        <version>1.0.0.42-SNAPSHOT</version>
+        <version>1.0.0.44-SNAPSHOT</version>
     </parent>
 
     <artifactId>homo-game</artifactId>
@@ -19,7 +19,7 @@
         <sentinel.version>1.8.3</sentinel.version>
         <revision>1.0.0.39-SNAPSHOT</revision>
         <spring.boot.plugin>2.5.4</spring.boot.plugin>
-        <homo.core.version>1.0.0.42-SNAPSHOT</homo.core.version>
+        <homo.core.version>1.0.0.44-SNAPSHOT</homo.core.version>
     </properties>
 
     <modules>

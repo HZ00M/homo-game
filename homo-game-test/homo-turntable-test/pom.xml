@@ -51,7 +51,7 @@
                 <version>${homo.core.version}</version>
                 <executions>
                     <execution>
-                        <id>homoTurnTable-1</id>
+                        <id>homoTurnTable</id>
                         <goals>
                             <goal>homoTurnTable</goal>
                         </goals>
